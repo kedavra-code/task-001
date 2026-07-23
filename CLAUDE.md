@@ -1,37 +1,51 @@
-# Handoff for Codex
+# CLAUDE.md
 
-Date: 2026-05-28
+Project instructions and working notes for Claude Code sessions in this repository. Read this first when starting work here.
 
-## Context
+## Overview
 
-The user wants to build a React web app for task dispatching.
+task-001 (formerly "Task Dispatcher") is a React web app for fast operational task triage: capture incoming work, decide what is important, urgent, still unclear, self-owned, or delegable, and keep it visible until it is started or done. It is for individuals and small operational teams that need lightweight action steering rather than a broad project or collaboration suite. Collaboration happens in other tools; this app stays deliberately narrow: categorize, prioritize, dispatch, and follow up.
 
-The app is now an active Vite React task-dispatching app with Supabase-backed persistence and Google login. Continue from GitHub `main`, keep changes small, and follow the working rules in `NEXT.md`.
+Stack: React 19, TypeScript 6, Vite 8, Supabase (auth + storage), Google OAuth, Vercel hosting, GitHub source control.
 
-Product positioning: task-001 focuses on fast operational task triage: capture incoming work, decide what is important, urgent, still unclear, self-owned, or delegable, and keep it visible until it is started or done. It is for individuals and small operational teams that need lightweight action steering rather than a broad project or collaboration suite. Collaboration happens in other tools; this app stays deliberately narrow: categorize, prioritize, dispatch, and follow up.
+## Working Rules
 
-## Current Status
+- GitHub `main` is the source of truth. At the start of a session that inspects, changes, or judges existing behavior, run `git status --short` and `git pull --rebase --autostash` first; do not rely on memory of an older local checkout.
+- Before every push: run `npm test`, `npm run lint`, and `npm run build`.
+- Do not start or check the local dev server (`npm run dev`) as part of normal verification — only if the user explicitly asks for it.
+- Before pushing, update `README.md` when user-facing behavior changed, the in-app `...` -> `Docs` panel, and this file (`CLAUDE.md`) when working rules or current behavior changed. Keep them in sync with the app in the same commit — this file drifting from actual behavior makes it actively misleading.
+- Commit with a clear message and push directly unless the user says not to.
+- After implementing a change, tell the user exactly what to test.
+- If a change needs manual action outside the repo — Supabase SQL, Vercel/GitHub settings, OAuth config — call it out explicitly as a separate note with the exact SQL or steps required.
+- Apply changes consistently regardless of which machine/session is doing the work: preserve existing safety confirmations, popup-close behavior, documentation updates, and verification/push flow unless the user explicitly changes the rule.
+
+## Repository & Deployment
+
+- GitHub: `git@github.com:kedavra-code/task-001.git`
+- Production: Vercel, auto-deploys on push to `main`. Current URL: `https://task-001-sepia.vercel.app/`
+- `vercel.json` sets `Cache-Control: no-store` for the deployed app so stale UI builds shouldn't remain visible after a deployment. If a pushed change looks invisible in the browser, verify the Vercel deployment's Git commit before making further UI changes.
+- Google access is gated through Supabase `allowed_users`. `miro@pixelina.me` is the admin and can add/remove allowed Google users inside the app under `...` -> `Users`. Each allowed user has a separate task list and separate synced settings via `user_id`; this is not shared-workspace collaboration.
+
+## Code Layout
+
+- App shell: `src/App.jsx`
+- Styles: `src/styles.css`
+- Subtask normalization and `task_subtasks` row conversion: `src/subtasks.js`
+- Configurable three-row overview tab layout: `src/TaskScopeTabs.jsx`
+- Further notes: `docs/codex-review.md` (broader review), `docs/subtask-normalization-plan.md` (subtask normalization target/migration order), `docs/auth-hook-setup.md` (Auth Hook activation steps)
+
+## Current Behavior
+
+Keep this section in sync with the app — update it whenever behavior described here changes.
 
 - 2026-07-23: The `Upcoming` tab was removed by user request. This included its counter, the `Start tab browser`/`Start tab phone` Upcoming option, `Reset Upcoming order`, the drag-and-drop reminder reordering, `user_settings.due_reminder_order` (usage removed, Supabase column left in place), and `src/reminderOrder.js` (deleted, along with its tests). The underlying reminder detection (`shouldShowDueReminder`, `getDueReminderStatus`), the red `!` marker/tooltip, red due-date coloring, and the optional `Start reached`/`Overdue` due tabs were intentionally kept. Default tab layout is now row 1 `All`+tags, row 2 `Newest`/`Open`/`Started`, row 3 empty. `default_start_tab`/`default_start_tab_mobile` now only ever resolve to `active`; the UI selects for them were removed from Options.
 - Subtasks may intentionally have identical text; normalization must not collapse equal subtask contents. Only technical duplicate rows for the same Supabase task/position should be collapsed. Saving pending new-subtask text through the `Save changes?` dialog should keep the inline subtask editor open and show a fresh empty add field at the top.
 - `Newest` keeps real `created_at` values for new tasks and sorts those before repaired legacy fallbacks. The start-date fallback is a one-time repair only for old tasks with missing created timestamps, former task-code-derived legacy timestamps, or identical Supabase backfill timestamps shared by several tasks. Switching to `Newest` clears due filters.
-- Repository is active and deployed through Vercel.
-- `vercel.json` sets `Cache-Control: no-store` for the deployed app so stale UI builds should not remain visible after deployment. If a pushed change is invisible in multiple browsers, verify the Vercel deployment's Git commit before making more UI changes.
-- Main app shell is `src/App.jsx`; styles are in `src/styles.css`; Subtask normalization and `task_subtasks` row conversion live in `src/subtasks.js`; the configurable three-row overview tab layout lives in `src/TaskScopeTabs.jsx`.
-- `npm run lint` and `npm run build` are the normal verification checks before pushing.
-- User-facing documentation lives in both `README.md` and the in-app `...` -> `Docs` panel.
-- Always update this handoff file (`CLAUDE.md`) when committing project changes.
-- At the start of each task-001 turn, run `git status --short` and `git pull --rebase --autostash` before inspecting or judging existing behavior. GitHub `main` is the source of truth; do not decide that something is missing from an older local checkout.
-- Apply changes identically on every computer: keep existing safety confirmations, popup-close behavior, cache-buster reporting, documentation updates, verification commands, and push flow unless the user explicitly changes the rule.
-- Before every push, run `npm test`, `npm run lint`, and `npm run build`.
-- After implementing changes, always tell the user exactly what they should test in the final answer and include the production cache-buster URL with the pushed commit hash.
-- If a change needs manual user action outside the repository, especially Supabase SQL, Vercel/GitHub settings, or OAuth configuration, make it highly visible in the final answer. Use a separate manual-action note and include the exact SQL or concrete steps the user must run.
 - Popups and dialogs should have an `x` in the top-right corner, close when the user clicks or touches outside them, stay inside the visible viewport, and keep newly opened inline confirmations inside the visible popup or viewport. The old header bell is intentionally removed; pending clarification/start/due/overdue work is marked directly on tasks with the red `!` reminder marker and red due-date coloring. Date checks tolerate date-only values and ISO timestamp values.
 - The quick filter popup and the `Upcoming` tab were removed; the red `!` reminder marker and date coloring cover pending clarification/start/due/overdue work instead. Due tabs for `Start reached` and `Overdue` are hidden by default and can be toggled in the `...` options menu.
 - The Master Dispatcher can be configured in the `...` menu. Action status is `Open` without a concrete assignee or with `to decide`, `self` for the Master Dispatcher, and `delegate` or `assigned` for other assignees. `delegate` means the assignee still has to be informed. `assigned` means the assignee has been informed; setting it automatically changes an open task to `Started`, and switching back to `delegate` returns a started task to `Open`. Changing the assignee resets the dispatch state to `delegate` so old assignment state does not move to a new person. Supabase requires `alter table public.tasks add column if not exists dispatch_status text not null default 'delegieren';`.
 - The `...` menu is a two-cell table grouped into clear rows: Master Dispatcher; Browser compact/tooltips; Deleted/Done; Tags/Docs/Users; Undo/Redo; Export/Import; and Logout at the bottom. Single-option rows keep the option in the left table cell instead of spanning the full menu. In the browser, the menu opens from the left edge of the `...` button so it stays inside the viewport.
 - Sharing copies the task summary plus a direct `?task-id=T-123` URL to the clipboard before opening the browser/device share sheet. Opening such a URL after login/load opens the matching task code or internal task id in the normal Maximum detail view for the current user's task list; use the pencil icon to edit it. This works around Microsoft Teams sometimes opening the selected chat without carrying the Web Share text into the message field.
-- Google access is managed through Supabase `allowed_users`. `miro@pixelina.me` is the admin and can add/remove allowed Google users inside the app under `...` -> `Users`. Each allowed user has a separate task list and separate synced settings via `user_id`; this is not shared-workspace collaboration.
 - Supabase schema updates through Auth Hooks, `task_subtasks`, last view, and column filters were executed by the user. Auth Hooks were enabled and tested on 2026-06-04.
 - Future alternative auth target: consider Supabase email/password or magic-link login plus TOTP MFA through authenticator apps, keeping the `allowed_users` whitelist, Lars as admin, and separate per-user task lists/settings. Avoid SMS 2FA for the no-cost path.
 - `When` and `Prio` are derived from criteria dropdowns, shown while capturing/editing on desktop and mobile, recalculated from criteria whenever a task is normalized/saved, and are not set manually. `When` answers `When should we act?`; `Prio`/priority answers `How important?`; `Urgency` answers `How long can we still wait?`. `Prio` describes importance and changes slowly; `Urgency` describes time pressure and can change quickly. Examples to preserve: high-priority/low-pressure long-term migration, low-priority/high-pressure certificate expiring in 30 minutes. Priority is Impact × Damage; Urgency is remaining action margin × escalation speed. `WIP` and `Private` are no longer used as `When` filter values; started work is represented by status `Started`, and private work is represented by tags such as `Private`.
@@ -73,175 +87,6 @@ Product positioning: task-001 focuses on fast operational task triage: capture i
 - `npm test` runs Node core-rule tests for subtasks, dependencies, dependency cycles, and reminder visibility.
 - Mobile/web push notifications are intentionally parked as a future feature. If resumed, keep the current in-app reminder popup as fallback and investigate Web Push with explicit opt-in, Supabase-stored per-device subscriptions, scheduled checks, duplicate prevention, and iOS Home-Screen-App requirements.
 - User-approved future improvement themes still open: provider-neutral Email-to-Task, optional REST API for authenticated external integrations, optional mobile/web push notifications, alternative auth with 2FA, AI-assisted task creation, AI-assisted When/Prio criteria suggestions, further App.jsx modularization beyond `src/subtasks.js` and `src/TaskScopeTabs.jsx`, and later removal of legacy `tasks.subtasks` after the normalized `task_subtasks` transition has run safely. A future REST API should respect separate per-user task lists, avoid exposing the Supabase anon client as the public integration contract, and start with a deliberately small endpoint surface such as task lookup by `task-id`, task creation, and status/date updates. For When/Prio AI, prefer a manual `Suggest with AI` action backed by a protected server-side endpoint; the AI suggests only criteria dropdown values plus confidence/reason, and the user reviews before the app applies existing deterministic derivation.
-- Broader Codex review is documented in `docs/codex-review.md`; subtask normalization target and migration order are documented in `docs/subtask-normalization-plan.md`; Auth Hook activation steps are documented in `docs/auth-hook-setup.md`.
-
-## GitHub Repository
-
-```text
-git@github.com:kedavra-code/task-001.git
-```
-
-Expected local path on each Windows computer:
-
-```text
-C:\Dev\task-001
-```
-
-## What Was Done on the Home Computer
-
-- Git was already installed.
-- Global Git identity was set to:
-
-```text
-user.name=Miroslav Kobas
-user.email=307247231+kedavra-code@users.noreply.github.com
-```
-
-- SSH key was created for the GitHub account:
-
-```text
-307247231+kedavra-code@users.noreply.github.com
-```
-
-- SSH authentication to GitHub was tested successfully.
-- GitHub recognized the user as:
-
-```text
-kedavra-code
-```
-
-- Repository was cloned to:
-
-```text
-C:\Dev\task-001
-```
-
-- Initial handoff/project files were added and pushed:
-  - `README.md`
-  - `NEXT.md`
-  - `.env.example`
-  - `CLAUDE.md`
-
-
-## Future Architecture Note
-
-- Zielarchitektur fuer langfristige Plattformunabhaengigkeit: gemeinsames Web-Frontend als Kern der App, lokale Storage-Schicht fuer Offline-first Nutzung, optionale Sync-Schicht spaeter z.B. ueber Google Drive, Android/iOS via Capacitor und Desktop via Tauri. Daten sollen lokal zuerst liegen, Sync nur ergaenzend arbeiten; fuer produktive Nutzung kein eigenes Backend und moeglichst keine Hosting-Abhaengigkeit voraussetzen.
-- Zielprozess fuer Entwicklung und Release nach der lokalen Zielarchitektur: Development, Test/Preview und Production als getrennte App-Kanaele behandeln, nicht nur als unterschiedliche URLs. Jede Umgebung braucht eigene App-/Bundle-Identifier, eigene lokale Storage-Namen bzw. Datenverzeichnisse und eigene optionale Sync-Ziele, damit Testversionen nie produktive Daten oeffnen. Entwicklung laeuft auf Feature-Branches mit lokalen Testdaten; nach Merge nach main entstehen Preview/Test-Builds mit separaten Testdaten; stabile Versionen werden per Versionstag, Changelog und Release-Builds fuer Web, Android/iOS und Desktop veroeffentlicht. Produktivdaten duerfen nur mit getesteten Release-Builds geoeffnet werden; Datenmodell-Aenderungen brauchen Migration, Backup und moeglichst Rueckfallstrategie.
-
-## What To Do Tomorrow on the Office Computer
-
-First inspect whether the office computer already has the repo:
-
-```powershell
-Test-Path C:\Dev\task-001
-```
-
-If the repo does not exist yet:
-
-```powershell
-mkdir C:\Dev
-cd C:\Dev
-git clone git@github.com:kedavra-code/task-001.git C:\Dev\task-001
-cd C:\Dev\task-001
-```
-
-If the repo already exists:
-
-```powershell
-cd C:\Dev\task-001
-git pull
-```
-
-Then check:
-
-```powershell
-git status
-git remote -v
-git config --global --list
-```
-
-If SSH is not configured on the office computer yet, create or reuse an SSH key for GitHub and add the public key to GitHub under:
-
-```text
-GitHub Settings -> SSH and GPG keys -> New SSH key
-```
-
-Then test:
-
-```powershell
-ssh -o StrictHostKeyChecking=accept-new -T git@github.com
-```
-
-Expected success:
-
-```text
-Hi kedavra-code! You've successfully authenticated, but GitHub does not provide shell access.
-```
-
-## Next Project Step
-
-Immediate next step after this handoff:
-
-- Check whether GitHub/Vercel recovered from the 2026-07-16/17 GitHub REST API degradation.
-- Production was stuck on Vercel commit `24c5bb4 Add input length guidance`, while the intended latest commit is `3781b88 Trigger Vercel deployment`.
-- Do not rebuild the same input-sizing/textarea fixes before verifying deployment state. The local code already contains those changes and local verification passed.
-- Expected production cache-buster for the current state: `https://task-001-sepia.vercel.app/?v=3781b88`.
-- If Vercel still does not deploy `3781b88` or newer, repair the GitHub/Vercel deployment path first: Vercel project `task-dispatcher` -> Settings -> Git -> confirm repository `kedavra-code/task-001`, branch `main`, and reconnect/reauthorize the GitHub integration if needed.
-
-Then continue UI and workflow improvements in small tested increments. Before pushing:
-
-```powershell
-git pull
-npm run lint
-npm run build
-git status
-git add -A
-git commit -m "<clear message>"
-git push
-```
-
-Do not start the local dev server as part of normal verification unless the user explicitly asks for it.
-
-## Current Deployment Incident / Handoff Snapshot
-
-- Latest intended local/GitHub state: `3781b88 Trigger Vercel deployment`.
-- Relevant preceding commits:
-  - `d40025f Disable Vercel cache for app shell`
-  - `3eaf680 Remove textarea resize handles`
-  - `137c4b0 Force task title fields to controlled size`
-  - `24c5bb4 Add input length guidance`
-- Code state includes:
-  - task/input length guidance and hard limits,
-  - wider but controlled task-title edit fields,
-  - no manual resize handles for textareas,
-  - `vercel.json` with `Cache-Control: no-store`,
-  - `.vercel` ignored locally.
-- Local checks passed before handoff: `npm test`, `npm run lint`, `npm run build`.
-- User ran `vercel build --prod` locally; build succeeded and produced newer assets such as `index-CGKlWzKc.css`.
-- User ran `vercel deploy --prebuilt --prod --yes --scope larstremmel-1115s-projects --debug`; it repeatedly hung at `Sending deployment creation API request`.
-- GitHub Status at the same time showed degraded REST API performance. Treat this as likely external deployment/API degradation, not an app-code regression, until proven otherwise.
-
-## Important Preferences
-
-- Keep the project in GitHub as the source of truth.
-- Use `NEXT.md` as the short end-of-session note.
-- Do not commit real secrets.
-- Use `.env.example` for environment variable names only.
-- Keep setup reproducible for home and office computers.
-
-## Product Notes
-
-Initial idea:
-
-Build a task-dispatching web app for assigning, coordinating, and tracking tasks.
-
-Questions to clarify before deep implementation:
-
-- User roles: dispatcher, assignee, admin?
-- First version frontend-only or with backend/API?
-- Real-time updates needed?
-- Desktop-first, mobile-first, or responsive from the start?
-- What does a task contain? Title, status, assignee, priority, due time, location, notes?
 - Current selection chips are shown below the tabs for list views: view, scope, List/Kanban mode, and search. The filter icon shows the active filter/sort count and lists those entries on hover. `Done` and `Deleted` count as `View` filters there, and `Reset filters` returns from them to `All active` in the current scope. The neutral active-task view is labeled `All active`; tag tabs are represented via Scope, not by changing View. Keep this session-only and do not persist it as a default.
 - Visible UI labels, dropdown option labels, card values, and tooltips must remain English; legacy German internal task values are displayed through `getDisplayValue` and should not be shown raw.
 - Follow-up dates are only relevant for externally assigned/delegated tasks; tasks owned by the Master Dispatcher hide and clear follow-up values.
@@ -257,3 +102,14 @@ Questions to clarify before deep implementation:
 - Predecessor and Successor multi-select popups include a search field above the checkbox list; typing filters task-code/title labels while preserving the existing checkbox selection flow.
 - Compact cards show Predecessors and Successors as labeled clickable text below the badges outside edit mode. Each relation is clickable and preserves the current view; multiple relation targets open the existing picker popup. In Minimum detail mode, relation details stay hidden because the `Additional details` label is not shown.
 - In task edit parameters, keep the row order stable: Tag, Assignee, Action, Status; below that Start date, Due, Follow-up. Browser uses compact rows; phones use one parameter per row in that same order. Action is always visible there, but read-only when it is only calculated.
+
+## Future Direction (not yet implemented)
+
+- Zielarchitektur fuer langfristige Plattformunabhaengigkeit: gemeinsames Web-Frontend als Kern der App, lokale Storage-Schicht fuer Offline-first Nutzung, optionale Sync-Schicht spaeter z.B. ueber Google Drive, Android/iOS via Capacitor und Desktop via Tauri. Daten sollen lokal zuerst liegen, Sync nur ergaenzend arbeiten; fuer produktive Nutzung kein eigenes Backend und moeglichst keine Hosting-Abhaengigkeit voraussetzen.
+- Zielprozess fuer Entwicklung und Release nach der lokalen Zielarchitektur: Development, Test/Preview und Production als getrennte App-Kanaele behandeln, nicht nur als unterschiedliche URLs. Jede Umgebung braucht eigene App-/Bundle-Identifier, eigene lokale Storage-Namen bzw. Datenverzeichnisse und eigene optionale Sync-Ziele, damit Testversionen nie produktive Daten oeffnen. Entwicklung laeuft auf Feature-Branches mit lokalen Testdaten; nach Merge nach main entstehen Preview/Test-Builds mit separaten Testdaten; stabile Versionen werden per Versionstag, Changelog und Release-Builds fuer Web, Android/iOS und Desktop veroeffentlicht. Produktivdaten duerfen nur mit getesteten Release-Builds geoeffnet werden; Datenmodell-Aenderungen brauchen Migration, Backup und moeglichst Rueckfallstrategie.
+
+## Preferences
+
+- Keep the project in GitHub as the source of truth.
+- Use `NEXT.md` as a short end-of-session note.
+- Do not commit real secrets; use `.env.example` for environment variable names only.
