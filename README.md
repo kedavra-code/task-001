@@ -1,0 +1,529 @@
+# Task Sheet / Task Dispatcher
+
+React web app for dispatching, tracking, and coordinating tasks. The current
+app was migrated from the existing local `task-sheet` React app.
+
+Task Dispatcher focuses on fast operational task triage: capture incoming work, decide what is important, urgent, still unclear, self-owned, or delegable, and keep it visible until it is started or done. It is aimed at individuals and small operational teams that need lightweight action steering rather than a broad project or collaboration suite. Collaboration happens in other tools; this app stays deliberately narrow: categorize, prioritize, dispatch, and follow up.
+
+## Current Status
+
+The repository contains the working task sheet app on top of a Vite React
+TypeScript scaffold.
+
+## Codex Project Memory
+
+Codex sessions should read `docs/codex-notes.md` first when continuing work, especially on another computer. That file records the current working rules, recent behavior decisions, verification flow, and future backlog. Keep it updated together with user-facing documentation whenever behavior or project rules change.
+
+## Stack
+
+- React 19
+- TypeScript 6
+- Vite 8
+- lucide-react icons
+- Supabase for auth and task storage
+- Google OAuth via Supabase Auth
+- Vercel for hosting/deployment
+- GitHub for source control
+
+## Services
+
+- **GitHub**: source of truth for the repository.
+- **Supabase**: database, Row Level Security, and Google Auth session handling.
+- **Google Cloud / Google Auth Platform**: OAuth client for Google login.
+- **Vercel**: production hosting at `https://task-dispatcher.vercel.app/`.
+
+## Features
+
+- Add, edit, complete, delete, filter, sort, import, and export tasks
+- Online task persistence via Supabase
+- Google login/logout
+- Status tabs `Upcoming`, `Open`, `Started`, and `Newest`, with `Done` and `Deleted` available from the `...` menu
+- Delegation follow-up date for `delegate`/`assigned`, plus a menu-based `Review` view and a daily/weekly closing summary
+- Toggleable Kanban view with persistent optional `clarify`, `delegate`, `Open`, and `Started` columns
+- Managed task tags, max 1 per task and max 10 catalog tags, with synced optional tag-based tabs
+- Derived `When` and `Prio` values from simple criteria
+- Structured descriptions with paragraphs and bulletpoint display
+- Separate open, started, and done views
+- Desktop table view and mobile card view
+- Mobile task cards with compact action icons for descriptions, sharing, deletion, and completion
+- Predecessor/successor dependency indicators derived automatically from existing task dependencies
+- JSON and CSV import/export
+- Undo/redo for task-list changes
+- Derived `When` and `Prio` handling: `When` answers `When should we act?`, `Prio`/priority answers `How important?`; criteria dropdowns derive the values; the derived values are shown while capturing/editing and are not set manually
+
+## Master Dispatcher
+
+The `...` options menu includes a local `Master Dispatcher` setting. The action
+column shows `Open` when no assignee is set or the assignee is `to decide`,
+`self` when the assignee is the configured Master Dispatcher, and `delegate` for all other assignees until they are explicitly marked `assigned`.
+`delegate` means the assignee still has to be informed. `assigned` means the assignee has been informed and the task automatically switches to `Started` from the Master Dispatcher's perspective; if no `Start date` exists yet, the app sets it to the date the task first becomes `Started`. Switching back to `delegate` returns it to `Open`.
+The menu is grouped into clear themed blocks with headings for view, tabs, layout, Kanban, cards, editing, task views, management, history, data, and logout. Rows with a single option keep that option in the left
+table cell of the two-cell menu instead of stretching across the full menu. In the browser, the menu
+opens from the left edge of the `...` button so it stays inside the viewport.
+
+The setting is stored locally in the browser and defaults to `miro` when empty.
+
+## Mobile Task Cards
+
+The app includes a current user documentation panel under the `...` options menu. Keep the in-app panel and this section aligned when user-facing behavior changes.
+
+The mobile overview is intentionally compact. Each card shows the task ID and title first, followed by compact meta values in a fixed 3-column mobile grid. Compact card values show their visible label only while the value is still empty, except `Start:` and `Due:`, which always keep their labels and may wrap to two lines on phones only after the colon. The label before the colon stays neutral, has a small gap after the colon, and the value keeps the badge color. When tooltips are enabled, compact card values expose their column name as a tooltip: hover on browser, or tap/focus the value on touch devices. Tooltips appear near the value and are clamped inside the visible viewport so they do not overflow off-screen.
+On mobile capture and mobile editing, the derived `When` and `Prio` values are shown so changes to the criteria stay visible without making those values manually selectable. The mobile assignee field uses a full-width row and a large touch target; tapping either the field or its arrow opens the available assignees.
+Browser capture keeps the full desktop form, but the capture card is content-based and Task, description, and tag fields are width-limited so they do not stretch across the whole screen. Phone capture remains responsive/full-width.
+The `...` options menu includes separate persistent `Layout Browser` and `Layout phone` selectors for `Normal` or `Dark Mode`, separate browser/phone default-open/default-closed choices for the four edit sections, a persistent `Show tooltips` checkbox, a `Default task details` Minimum/Maximum selector, an optional due-tab toggle, and a reset button for the custom tab layout. Edit sections default to expanded on both browser and phone. Task cards default to `Minimum`, meaning parameter badges, card content, and the `Additional details` label stay hidden. `Maximum` shows parameter badges by default; cards with a description, subtasks, or comments then show a collapsible `Additional details` label below the badges for opening the content panels. The header task-detail icon temporarily switches the current List/Kanban view between Minimum and Maximum without changing the saved default; its tooltip starts with `View:`. The menu controls themselves have short tooltips explaining what each option does. `Show tooltips` defaults to enabled; when active, capture and edit fields on browser and phone expose tooltips with the current value and a short explanation. `When` and `Prio` tooltips also state that `When` answers `When should we act?` and `Prio`/priority answers `How important?`, then show the selected criteria that produced the derived value and the default sort order. The `Assignee` tooltip, including in compact card badges, explains `to decide`/empty as still open, the Master Dispatcher as `do it yourself`, and all other names as `delegate` or `assigned`; `Action` explains the calculated result. Dark Mode, edit-section defaults, task-card detail default, browser card badge column counts, browser Kanban badge column count, separate browser/phone default list/Kanban view, separate browser/phone default start tab, Kanban columns, tooltips, Browser compact, tab layout, tag tabs, tag catalog, and Master Dispatcher sync through `user_settings` when the schema columns exist, with local browser storage as fallback. Current working selections such as active tab, tag scope, search text, filters, column sorts, the temporary List/Kanban toggle, and the temporary task-detail toggle stay session-only while the app is open; a fresh app session starts from the configured option defaults.
+
+Header icons:
+
+- Plus icon: opens task capture. Capture is no longer a tab.
+- Kanban/List icon: toggles the task overview between the standard list view and a Kanban board for the current session only. Persistent browser/phone defaults are changed only in the `...` options menu.
+- `Upcoming`: shows pending clarification/start/due/overdue work directly as a tab; its counter turns red with a white number when tasks are waiting.
+- The `Task Dispatcher` title jumps back to neutral `All` without additional status or due filters.
+- On phones, the device/browser back button is intercepted while the app is active and returns to `All / Open` when the browser exposes it as history navigation. The app also registers a best-effort native browser warning before the page/app is closed; Android/Chrome decides whether that warning is shown and controls its text.
+- On phones, the title is intentionally shorter so the header icons remain visible.
+- Icon order is always: edit, share, delete, completion. Adjacent action icons use the same visual size throughout the UI and are aligned to the right side of the card header, including edit mode. The old Details icon is replaced by a collapsible `Additional details` label below the badges. That label appears only in Maximum detail mode when the task has a description, subtasks, or comments, and it opens the labeled detail panels. Predecessors and successors no longer use separate arrow icons; they stay as labeled clickable relation text in the card details. An upcoming task shows a small red `!` marker directly left of the task ID in overview and edit mode, using the same red/white colors as the `Upcoming` counter. Its tooltip lists the concrete reasons such as `clarify`, `Start reached`, `due today`, or subtask reminders, including on touch devices. If a task title wraps to multiple lines, the `!` marker and task ID stay aligned with the first title line. The task ID is clickable only in overview cards/rows to locally toggle that card into the same Maximum view with `Additional details` expanded; clicking it again collapses the details, and clicking another task ID collapses the previous task before locally opening the new one without changing the global view mode, and only the currently open card renders detail content. In edit mode it is display-only. Editing starts from the pencil icon. In mobile edit mode, the edited card header uses the same width as the colored edit-section dividers; the optional `!` marker and task number stay left, and action icons are anchored to the right edge of the card.
+- `↑`: davor erfolgt. Tapping it jumps to the predecessor task.
+- `↓`: danach erfolgt. Tapping it jumps to the successor task.
+- `↕`: both preceding and following tasks exist. Tapping it opens the target picker when several related tasks exist.
+- Text-page icon: shown when a task has a description, comments, or subtasks. Tapping it opens the content area with description, subtasks, and comments; tapping again or tapping elsewhere closes it. Scrolling keeps the content area open.
+- Share icon: copies a compact task summary and direct task URL such as `https://task-dispatcher.vercel.app/?task-id=T-123` to the clipboard and opens the device share sheet when available. Opening such a link after login opens the task in the normal Maximum detail view for the matching user's task list; use the pencil icon to edit it. Some share targets such as Microsoft Teams may open the chosen chat without accepting the shared text; in that case the copied task summary can be pasted directly into the chat field.
+- Trash icon: deletes the task after confirmation. Check icon: toggles completion. On mobile, marking a task as done first opens `Complete? Yes No`; tapping the icon again, scrolling, or tapping elsewhere closes the prompt.
+
+The predecessor/successor icons do not require extra data fields. They are derived from the existing internal dependency relationship: a task with a predecessor points to the task that must happen before, and a task referenced by other tasks has successors.
+
+For dependency direction, the predecessor is the task that must happen before; the successor is the task that happens after.
+
+Task capture, desktop editing, and mobile editing support selecting multiple predecessors and multiple successors through searchable dropdown popups with checkboxes. Typing in the popup filters the available tasks, while the checkbox selection works as before. The first predecessor is also stored in the legacy single-predecessor field for compatibility.
+Popups and dialogs have an `x` in the top-right corner, close when the user clicks or taps outside them, and keep newly opened inline confirmations inside the visible popup or viewport.
+Only open tasks can be selected or shown as dependency targets. When a task is marked done, it is removed from predecessor/successor selectors and from other tasks' predecessor lists. If the task is later reopened, those removed dependencies are intentionally not restored automatically because the dependency situation may have changed; set any needed predecessors or successors again.
+
+`When` and `Prio` are derived dynamically from the related criteria dropdowns. `When` answers `When should we act?`; `Prio`/priority answers `How important?`.
+They are displayed in the overview and edit views, but they are not set manually.
+Whenever a task is normalized or saved, those stored values are recalculated from
+the saved criteria so the persisted `When`/`Prio` match the displayed values.
+`WIP` and `Private` are no longer used as `When` filter values; started work is represented by the
+separate `Started` status and private work is handled through tags such as `Private`.
+
+### Priority und Urgency
+
+`Prio` / Priority answers: `How important is this?`
+`Urgency` answers: `How long can we still wait?`
+
+| Priority (Prio) | Urgency |
+| --- | --- |
+| How important is the topic? | When must I act? |
+| Beschreibt die Bedeutung. | Beschreibt die zeitliche Dringlichkeit. |
+| Ändert sich meist langsam. | Kann sich sehr schnell ändern. |
+
+Beispiele:
+
+| Situation | Prio | Urgency |
+| --- | --- | --- |
+| Sicherheitslücke ohne bekannten Angriff | Sehr hoch | Mittel |
+| Server ist ausgefallen | Hoch | Sehr hoch |
+| Strategisches Projekt für nächstes Yeshr | Sehr hoch | Niedrig |
+| Drucker des CEOs funktioniert vor einer Präsentation in 10 Minuten nicht | Mittel | Sehr hoch |
+
+Genau deshalb können beide Dimensionen unabhängig voneinander sein:
+
+- `Prio 1` + geringer Urgency: Langfristige Migration eines kritischen Systems.
+- `Prio 3` + hoher Urgency: Ein Zertifikat läuft in 30 Minuten ab und muss erneuert werden.
+
+`Priority = Impact × Damage`.
+`Urgency = verbleibender Handlungsspielraum × Eskalationsgeschwindigkeit`, allgemeiner: Zeit bis zum kritischen Ereignis und Geschwindigkeit der Verschlechterung.
+
+In the desktop table, `Predecessors` and `Successors` are separate columns. If several predecessors or successors exist, the relevant column opens a small popup for choosing the target task. Compact cards show predecessors and successors as labeled clickable text in the card details outside edit mode; clicking a related task jumps to it while preserving the current view, and multiple related tasks use the same picker popup pattern. In Minimum detail mode, relation details stay hidden because the `Additional details` label is not shown.
+
+Clicking a dependency target preserves the current overview view and scrolls to the selected task if it is visible there, highlighting it briefly.
+
+## Subtasks
+
+Tasks can contain a lightweight internal subtask list. These subtasks exist only inside the parent task, do not have priority or dependencies, and are intentionally not a replacement for full task management in other tools. Subtasks can have their own optional start and due dates.
+Subtasks can be marked done and reopened. Done subtasks remain visible in a greyed/struck style. A parent task cannot be marked done while any subtask is still open; the app shows a popup hint in that case.
+
+On mobile cards, subtasks are not shown by default. They appear together with the description in the expandable content area behind the text-page icon and are shown as numbered, visually separated entries like comments, without an extra inner label below the section heading.
+
+Descriptions support lightweight structure. Blank lines create separate
+paragraphs, and lines starting with `-`, `*`, or `•` are shown as bulletpoints
+in the desktop table and mobile description panel.
+URLs in descriptions are clickable in read views. Links starting with `http://`, `https://`, or `www.` open in a new browser tab; the stored description remains plain text.
+In the desktop browser table, long read-only descriptions are shortened to the
+first 128 characters. A clickable `...` opens the full structured description
+in a popup next to the shortened text.
+Description edits happen inline in the Description section, using the same local disk and `X` pattern as comments and subtasks. The disk icon is grey without changes and highlighted when the description draft differs from the saved value. The local `X` opens the familiar Save changes? prompt for that description draft only. The task-level disk icon stays highlighted while any local draft exists. The task-level `Save changes?` dialog appears only when leaving or closing the task with unsaved changes.
+
+Comments sit below the subtasks in the task content area. In task edit mode, a comment editor
+appears with an empty input at the top; new
+comments are inserted above older comments. Each comment stores when it was
+created and, after changes, when it was edited. Comments can be changed or deleted with the same right-side icon layout used by subtasks; save/delete icons use matching size and sit directly to the right of the text fields, and deletion uses a trash icon. Comments use the same unsaved-draft save flow as the rest of task editing. Description fields grow from one visible row up to ten rows before scrolling; new comment and subtask fields grow up to four rows, while existing comment and subtask edit fields size to their content up to six rows.
+A new comment is saved through the highlighted disk icon or, when leaving the task, the `Save changes?` dialog; the adjacent `x` opens the familiar Save changes? prompt before discarding or saving pending new-comment text. Simply leaving the field keeps it pending and highlights the task-level disk icon. Further edits to a comment are saved with its own highlighted disk icon; unsaved local drafts also keep the task-level disk highlighted until saved through either the local disk or the global task disk, or until discarded. Clicking or touching outside the comment editor does not open a prompt. Leaving or closing the task with unsaved comment edits uses the normal `Save changes?` dialog.
+
+Subtasks are edited inline in the task edit view with the same create/edit card pattern as comments. New subtask textareas grow from one visible row up to four rows, then scroll internally; existing subtask textareas size to their content up to six rows, then scroll internally. An empty `Write a new subtask` field is always shown at the top; Start and Due date fields remain directly below that field. Press Enter or use the highlighted disk icon to create and save the new subtask below existing subtasks; use the adjacent `x` to open the familiar Save changes? prompt before discarding or saving the pending new subtask. Existing subtasks are shown as visually separated cards like comments, with right-side save, trash/delete, and done/reopen icons in one row, optional Start/Due dates, drag-and-drop reordering, and sideways drag or trash deletion. Done subtasks do not show a separate done/open text; their content is struck through. Subtask row changes and pending new-subtask text stay in the local subtask draft until the highlighted local disk icon, the global task disk icon, or the task-exit save dialog saves them; they also highlight the global task save disk icon. Clicking/touching outside the subtask editor keeps the draft pending and does not open a prompt. Leaving or closing the task with unsaved subtask changes opens `Save changes?`.
+
+Subtask dates must fit inside the parent task dates where those parent dates exist: a subtask cannot start before the parent start date, cannot be due after the parent due date, and cannot be due before its own start date. If the parent has no corresponding date, the subtask may still use its own date.
+
+Supabase stores multiple predecessors in `depends_on_task_ids`. If a task has several predecessors and that column has not been added yet, the app blocks remote saving instead of silently reducing the relation to the legacy single predecessor.
+Supabase stores subtasks in the normalized `task_subtasks` table and still writes the legacy `tasks.subtasks` text array during the transition. On load, `task_subtasks` is preferred when rows exist; duplicate rows for the same task position are collapsed, and otherwise the legacy text array remains the fallback. Identical subtask text is allowed because two checklist items may intentionally have the same wording. Subtask rows use stable IDs and the schema has a unique `(user_id, task_id, position)` index to prevent technical duplicate rows.
+Supabase stores the automatic done date in `completed_at`. Apply the schema update before relying on online persistence of the done date.
+Supabase stores the task creation timestamp in `tasks.created_at`; the `Newest` tab shows the most recently added tasks first by newest effective creation timestamp. New tasks keep their real creation timestamp and sort before repaired legacy fallbacks. For older tasks without a stored creation timestamp, with the former task-code-derived legacy timestamp, or with an identical Supabase backfill timestamp shared by several old tasks, the app uses the task start date once as the creation timestamp on load/save. Tasks with neither creation timestamp nor start date are placed after dated tasks. Apply the schema update before relying on online persistence of the creation timestamp:
+
+```sql
+alter table public.tasks
+add column if not exists created_at timestamptz not null default now();
+
+create index if not exists tasks_created_at_idx
+on public.tasks (created_at);
+```
+
+Supabase stores task tags in the `tags` text array. Apply the schema update before relying on online tag persistence.
+Supabase stores task comments in `tasks.comments` as JSON. Apply the schema update before relying on online comment persistence:
+
+```sql
+alter table public.tasks
+add column if not exists comments jsonb not null default '[]'::jsonb;
+```
+
+Supabase stores the dispatch action state in `tasks.dispatch_status` and delegation follow-up dates in `tasks.follow_up_date`. Apply the schema update before relying on online persistence of `assigned` or follow-up dates:
+
+```sql
+alter table public.tasks
+add column if not exists dispatch_status text not null default 'delegieren';
+
+alter table public.tasks
+add column if not exists follow_up_date date;
+```
+
+Supabase stores the managed tag catalog in `user_settings.available_tags`, selected tag tabs in `user_settings.selected_tag_tabs`, browser overview mode in `user_settings.browser_compact_view`, Master Dispatcher, tooltip preference, separate browser/phone dark-mode preferences, the manual due-reminder order, configurable card badge columns including browser Kanban, the separate browser/phone default list/Kanban view modes, separate browser/phone default start tabs, active Kanban columns, separate browser/phone edit-section defaults, and the custom three-row tab layout. Active tab, tag scope, search text, filters, and column sorts are intentionally session-only and are not restored on a fresh app start. Apply the schema update before relying on synced settings across phone and browser:
+
+```sql
+alter table public.user_settings
+add column if not exists browser_compact_view boolean default true;
+
+alter table public.user_settings
+add column if not exists master_dispatcher_name text default 'miro';
+
+alter table public.user_settings
+add column if not exists tooltips_enabled boolean default true;
+
+alter table public.user_settings
+add column if not exists dark_mode boolean default false;
+
+alter table public.user_settings
+add column if not exists dark_mode_browser boolean default false;
+
+alter table public.user_settings
+add column if not exists dark_mode_mobile boolean default false;
+
+do $$
+begin
+  if exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'user_settings'
+      and column_name = 'dark_mode'
+  ) then
+    update public.user_settings
+    set dark_mode_browser = true,
+        dark_mode_mobile = true
+    where dark_mode is true
+      and dark_mode_browser is false
+      and dark_mode_mobile is false;
+  end if;
+end $$;
+
+alter table public.user_settings
+add column if not exists edit_section_defaults jsonb not null default '{"version":5,"browser":{"parameters":true,"description":true,"comments":true,"subtasks":true},"mobile":{"parameters":true,"description":true,"comments":true,"subtasks":true}}'::jsonb;
+
+alter table public.user_settings
+add column if not exists due_reminder_order jsonb not null default '[]'::jsonb;
+
+alter table public.user_settings
+add column if not exists tab_layout jsonb not null default '[]'::jsonb;
+
+alter table public.user_settings
+add column if not exists card_badge_columns jsonb not null default '{"overview":"default","edit":"default","kanban":"default"}'::jsonb;
+
+alter table public.user_settings
+alter column card_badge_columns set default '{"overview":"default","edit":"default","kanban":"default"}'::jsonb;
+
+alter table public.user_settings
+add column if not exists default_view_mode text not null default 'kanban';
+
+alter table public.user_settings
+alter column default_view_mode set default 'kanban';
+
+alter table public.user_settings
+add column if not exists default_view_mode_mobile text not null default 'kanban';
+
+alter table public.user_settings
+add column if not exists default_start_tab text not null default 'active';
+
+alter table public.user_settings
+add column if not exists default_start_tab_mobile text not null default 'active';
+
+alter table public.user_settings
+add column if not exists kanban_columns jsonb not null default '["clarify","dispatch","open","started"]'::jsonb;
+
+alter table public.user_settings
+add column if not exists upcoming_badge_defaults jsonb not null default '{"version":2,"browser":false,"mobile":false,"dependenciesBrowser":false,"dependenciesMobile":false}'::jsonb;
+```
+Supabase stores the soft-delete date in `tasks.deleted_at`. Apply the schema update before relying on online persistence of the `Deleted` tab:
+
+```sql
+alter table public.tasks
+add column if not exists deleted_at date;
+```
+
+Google access is managed through `allowed_users`. The admin account `miro@pixelina.me` can add or remove allowed Google users in the app under `...` -> `Users`. Every allowed user has a separate task list and separate synced settings because tasks and user settings are scoped by Supabase `user_id`. Apply the schema update before using app-managed user access:
+
+```sql
+create table if not exists public.allowed_users (
+  email text primary key,
+  created_by uuid references auth.users(id) on delete set null,
+  created_at timestamptz not null default now()
+);
+
+alter table public.allowed_users enable row level security;
+
+insert into public.allowed_users (email)
+values ('miro@pixelina.me')
+on conflict (email) do nothing;
+
+drop policy if exists "Allow users to read own access row and admin all access rows" on public.allowed_users;
+
+create policy "Allow users to read own access row and admin all access rows"
+on public.allowed_users
+for select
+to authenticated
+using (
+  lower(email) = lower(auth.jwt() ->> 'email')
+  or lower(auth.jwt() ->> 'email') = 'miro@pixelina.me'
+);
+
+drop policy if exists "Allow admin to insert access rows" on public.allowed_users;
+
+create policy "Allow admin to insert access rows"
+on public.allowed_users
+for insert
+to authenticated
+with check (lower(auth.jwt() ->> 'email') = 'miro@pixelina.me');
+
+drop policy if exists "Allow admin to update access rows" on public.allowed_users;
+
+create policy "Allow admin to update access rows"
+on public.allowed_users
+for update
+to authenticated
+using (lower(auth.jwt() ->> 'email') = 'miro@pixelina.me')
+with check (lower(auth.jwt() ->> 'email') = 'miro@pixelina.me');
+
+drop policy if exists "Allow admin to delete access rows" on public.allowed_users;
+
+create policy "Allow admin to delete access rows"
+on public.allowed_users
+for delete
+to authenticated
+using (
+  lower(auth.jwt() ->> 'email') = 'miro@pixelina.me'
+  and lower(email) <> 'miro@pixelina.me'
+);
+```
+
+For stronger auth gating, `docs/supabase-schema.sql` also creates `public.hook_before_user_created` and `public.hook_custom_access_token`. After running the SQL, enable both Postgres functions in Supabase under `Authentication` -> `Hooks`. Detailed steps are in `docs/auth-hook-setup.md`.
+
+The app also keeps a local browser backup of the current task list and preserves local subtasks when remote data has none, so schema gaps do not silently replace existing local subtask content.
+
+A task cannot be marked as done while it still has open predecessors or open subtasks. This applies both to the completion icon and to the desktop status dropdown. Complete predecessor tasks and subtasks first, then mark the task as done.
+
+The desktop overview and the header filter popup can filter the visible task list by the table columns, including ID, When, Prio, Assignee, Action, Tag, task text, description, subtasks, predecessors, successors, status, start date, due date, done date, and deleted date where those columns are visible. The `Assignee` filter includes `all others`, meaning every concrete assignee except the configured Master Dispatcher and except `to decide`/empty. The `Action` filter includes `delegate` and `assigned`. The `Status` filter remains an editable dropdown for `All`, `Open`, and `Started`; `Done` and `Deleted` stay in the scoped `...` menu views. Choosing status or due filters activates the matching visible tabs where such tabs exist. The `ID` filter combines free text input with a dropdown of existing task IDs, so tasks can be narrowed directly by codes like `T-016`.
+The info line below the tabs always shows the current working selection: view, scope, list/Kanban mode, and search state. The filter icon shows a small count when filters, sorts, or the scoped `Done`/`Deleted` views are active, and its hover tooltip lists the active filters/sorts. The neutral active-task view is shown as `All active`, so tag tabs remain consistent as a scope such as `#ETH`. Active non-default filters and sorts are shown there as small muted chips so the current view remains understandable without reopening the filter popup. `Done` and `Deleted` appear there as `View` filters and `Reset filters` returns to `All active` in the current scope. In `Review`, a similar info row explains which criteria the Review view includes. These rows are hidden in single-task edit mode.
+Column filters include a sort icon next to the filter field. Clicking it cycles
+through standard, ascending, and descending sort. Multiple active sort controls
+are combined in table column order.
+The desktop table has its own larger viewport-height-limited scroll area without a separate visible-count row, so more tasks fit on screen and the horizontal scrollbar is reachable without scrolling to the bottom of the full page.
+In the `...` options menu, `Compact browser` controls the browser overview display. It is enabled by default and shows the same compact task cards used on phones; browser compact cards keep their compact width; longer task names are edited in the wider edit title field. Turning it off switches back to the wide table. The setting is synced through Supabase user settings when `browser_compact_view` exists, so the same choice applies after login on phone and browser. This is only a browser overview display option; browser task capture keeps the full desktop form.
+Browser and phone now each open their configured start tab on every fresh start: `All` by default, or `Upcoming` if selected in the options. Task capture is opened with the plus icon. Tab selection, tag scope, search text, filters, and column sorts stay in memory only for the current app session; return/navigation flows can still use that in-session state, but closing and reopening the app starts from the configured option defaults. Task cards default to Minimum detail mode, where badges and the `Additional details` label stay hidden. Maximum detail mode shows the badge grid, and tasks with description, subtasks, or comments expose their hidden content through a collapsible `Additional details` label.
+While editing tasks in the browser, short controls such as dropdowns, assignee, and date fields stay narrow; the task title, description, subtasks, and comments share the same controlled editing width so the card background does not stretch wider than the fields. In the browser parameter editor, Tag, Assignee, Action, and Status form one row, followed by Start date, Due, and Follow-up on the next row. Small dropdowns do not show a redundant close X; single-choice dropdowns such as Tag close after selection, while multi-select dependency dropdowns stay open for additional selections and close on outside click/Escape/trigger. On phones, the same order is kept but each parameter uses its own row. Comment and subtask text inputs use the same full editor width and text size as the description field, with content-based height.
+Status values are `Open`, `Started`, `Done`, and `Deleted`; `Open` and `Started` have status tabs, while `Done` and `Deleted` are opened from the `...` options menu. `Deleted` is also available in the status dropdown: choosing it sets the soft-delete date, while choosing `Open`, `Started`, or `Done` from a deleted task restores it into that status. When a task is marked done, the app stores the done date automatically and stays in the previous view instead of jumping to `Done`. Done tasks are shown in the `Done` menu view with the `Done on` column; compact cards show `done on [date]`. The `Done` view sorts by newest done date first by default, and the column still supports text filtering and manual ascending/descending sorting.
+Subtask start and due dates also feed the due tabs, reminder popup, and visible due-today hints while the parent task and the subtask are still open. Subtask hints include the subtask number, for example `Subtask 2: due today`, and clicking a reminder still jumps to the parent task.
+The quick filter popup was removed because `Upcoming` covers pending clarification, start, due-today, and overdue work. `Start reached` and `Overdue` are optional due tab filters, hidden by default, and can be shown from the `...` options menu.
+Task cards and table rows show reached start dates, due-today dates, and overdue due dates directly by coloring the date value red instead of adding separate due badges. The tooltips add `Start reached` on start dates and `due today` or `overdue` on due dates. Started tasks still appear in `Upcoming` for due and overdue reminders until they are done. The `Upcoming` counter uses a red badge with a white number whenever there are pending tasks; at `0` it uses the normal tab counter styling. While editing an upcoming task, the browser row and compact card show a red `!` icon immediately before the disk icon, with a tooltip listing every reason why the task is upcoming. Compact card overview and edit mode use the touch-safe tooltip; the browser table edit row uses the native hover tooltip.
+
+Tags are managed separately in the `...` options menu under `Tags`. They remain available even when no current task uses them, until they are deleted there. The catalog is limited to 10 tags and the dialog shows the current count, for example `3 of 10`. Deleting a tag removes it from task assignments and from selected tag tabs. Existing tags can be renamed with the pencil icon and saved with the disk icon; renaming updates task assignments, selected tag tabs, drafts, and the active scope.
+
+Tasks can have one tag from this managed tag catalog. Tags are stored on the task and can replace older category-like uses such as `Private`. A tag can be assigned while capturing and editing tasks on both phone and browser through a compact selection popup. Selecting another tag replaces the previous one; `No tag` removes it. If a task has no tag, the tag field shows `-`; clicking it opens the same popup.
+
+When a tag is assigned to a task, the matching tag tab is activated automatically. Existing catalog tags can also be selected or deselected in the `...` options menu under `Tags` as `Tag-Tabs`; each selected tag creates its own top tab while selected. Tag tabs can be reordered by drag-and-drop directly in the top tab bar or inside the tags dialog. The tag catalog, selected tag tabs, and their order are stored in Supabase user settings, so the same setup applies on phone and browser after login.
+
+The task overview includes a session-only free-text search above the task list on browser and phone; the same search field remains visible while capturing a new task. It searches across task ID, title, description, comments, subtasks, tags, assignee, action, When, priority, status, dependencies, start date, and due date. While text is entered, the search ignores the active tab, tag scope, and column filters so it can find every active task; `Done` searches done tasks only, and `Deleted` searches deleted tasks only. During an active search, scope, status, and due tabs remain visible but none is highlighted as active. Multiple words may match across different fields.
+
+The overview uses three configurable tab rows. The default layout is row 1 `Upcoming`, row 2 `All` followed by active tag tabs, and row 3 `Newest`, `Open`, and `Started`. Any visible tab can be moved across these three rows by drag-and-drop; drag-and-drop surfaces show an open-hand cursor on hover and a closed-hand cursor while dragging; the `...` options menu has `Reset tabs` to restore the default layout and `Reset Upcoming order` to clear the manual Upcoming drag-and-drop order so the standard sort applies again. The custom layout is stored locally and in `user_settings.tab_layout` when the Supabase column exists. `All` and all non-tag status/due tabs have explanatory tooltips; `Open`, `Newest`, and `Overdue` explain which tasks they include. The `Overdue` tooltip says that it shows open or started tasks/subtasks whose `Due` date has been reached. Tag tabs do not get extra explanatory tooltips. `Upcoming` shows pending clarification/start/due/overdue work globally in a persistent order, clears the active tag scope to `All`, and its tooltip describes it as everything that needs immediate attention. `Review` is opened from the `...` menu under task views and shows active tasks that should be checked briefly: old open tasks without movement, started tasks without a recent comment for 7+ days, delegated tasks without response/follow-up, and tasks missing start or due date; that view shows those criteria as an info row under the tabs. Tasks in `Upcoming` can be reordered by drag-and-drop only while the standard List view is active; dragging near the visible top or bottom edge starts auto-scrolling early, and the order is stored locally and in `user_settings.due_reminder_order`, while newly appearing tasks are inserted according to the normal When/Prio/date sorting rule. `Upcoming` cannot be deactivated by clicking it again; clicking `All` or a tag while `Upcoming` is active switches directly to the neutral view with all active tasks in that scope. Other active status tabs can still be clicked again to show all active tasks in the current scope except done/deleted tasks. `Newest` shows active, not-done tasks in the current scope with the newest effective creation timestamp at the top. New tasks keep their real creation timestamp and sort before old repaired fallbacks; for old tasks with missing or technical backfill creation timestamps, the start date is used once as fallback. Tasks with neither value appear after dated tasks. An optional fourth row with `Start reached` and `Overdue` can be enabled in the `...` options menu; disabling it clears an active due-tab filter. Normal task views use the standard task order: `When` (`clarify`, `now`, `later`, `someday`), then `Prio` (`prioritize`, `P1`, `P2`, `P3`), then due date, then task title. The Kanban/List options default to `Kanban` separately for browser and phone, persist locally, and sync through `user_settings.default_view_mode` and `user_settings.default_view_mode_mobile` when available; the header toggle switches only the current session view and does not change the persistent default. Browser and phone start tabs default to `All`, can independently be changed to `Upcoming` in the options, and sync through `user_settings.default_start_tab` and `user_settings.default_start_tab_mobile` when available. The Kanban toggle keeps the current task scope/search/filter context, groups the visible cards into the active Kanban columns `clarify`, `delegate`, `Open`, and `Started`, and sorts each column with that same default task order. `delegate` contains Tasks whose calculated `Action` is `delegate`; the visible Kanban columns can be switched on or off persistently in the `...` options menu. Browser Kanban cards use their own configurable badge-column count, defaulting to 3, and the same badge styling as compact list cards; while Kanban is active, the separate `Newest`, `Open`, and `Started` status tabs are hidden because `Open`/`Started` are already represented as board columns and `Newest` does not add a useful board scope. The Kanban board keeps non-squeezable badge tracks but uses slimmer flexible column tracks on browser, so four default columns fit better on high-resolution screens before horizontal scrolling is needed. Kanban-specific headings and empty states use the same compact card font sizing, while tab font sizes remain unchanged. Kanban badges use the same fixed 145px cell width as list badges, stay on one line, and shorten visually instead of wrapping; task IDs and the red upcoming marker also stay uncompressed. Within task cards, view and edit mode use one shared font family and text size; existing bold weights remain bold. On phones the board is presented as a landscape-style horizontal board with horizontal scrolling; edge fades and chevrons near the top of the cards indicate when more columns are available to the left or right, the board snaps to each column while scrolling, and each Kanban column/card uses the same width and fixed 3-column badge layout as the mobile list/edit cards. `Done` and `Deleted` are opened from the `...` options menu and apply to the active scope, so `#Private` plus the menu entry shows matching private tasks while `All` plus the menu entry shows matching tasks across all tags. Capture is opened from the header plus icon instead of a tab.
+
+Deleting a task asks for confirmation first using the same inline confirmation component and visual style as task completion (`Delete? Yes No` / `Complete? Yes No`), then moves it to `Deleted` instead of removing it immediately. The app stays in the previous view instead of jumping to `Deleted`, and resets that view's filters so the remaining tasks stay visible. Deleted tasks are hidden from active status views, dependency selectors, reminders, due tabs, and completion workflows. In the scoped `Deleted` view, they show the `Deleted on` date, can still be edited while retained, and can be restored. After 30 days, deleted tasks are permanently removed during the next save/load cycle.
+
+Browser compact cards and Kanban columns keep fixed calculated widths on desktop. Browser card width is derived from the exact badge-grid width plus card padding/border and a small safety reserve, and does not grow or shrink while resizing the desktop window, so badges remain inside the card when horizontal scrolling appears. Browser edit cards additionally keep a content-based minimum width for the parameter section, title/header, text editors, and colored dividers so edit controls never protrude beyond the card background without forcing unnecessarily wide cards when only a few badge columns are active. Kanban columns use fixed tracks rather than flexible `1fr` tracks, and the board can be scrolled horizontally with the scrollbar or by dragging the board with the mouse. Touch/phone layouts keep the responsive 100% card width. If the browser window becomes too narrow, the card list or Kanban board scrolls horizontally instead of squeezing cards, badges, or right-side icons past the card edge. Kanban is an overview only: clicking a task opens the normal single-task edit card outside the board, and closing/completing/deleting returns to the previous Kanban view.
+The visible horizontal Kanban scrollbar sits above the Kanban columns directly below search. The lower board scrollbar is hidden visually, but the board still supports horizontal wheel/touch scrolling. Mouse-drag scrolling and the open/closed hand cursor are enabled only while the board actually has horizontal overflow.
+Resizing the browser window across desktop/mobile breakpoints keeps the current List/Kanban choice for the session and does not reapply the persistent default view.
+Dependencies are shown as `Blockiert durch` / `Blockiert` in relation popups and icon tooltips. Dependency cycles are rejected when tasks are captured or edited.
+Top-level tabs show compact counters for `All`, `Upcoming`, `Review`, and selected tag tabs. `All` and tag tabs count only active tasks in `Open` and `Started`; `Upcoming` counts global pending reminder tasks and turns red/white when the count is greater than zero. Done and deleted tasks are counted only in the `Done` and `Deleted` entries in the `...` menu. The status tabs `Review`, `Open`, `Started`, and `Newest` show their own counters for the currently selected top-level scope; `Newest` counts all active, not-done tasks in that scope. If enabled in the `...` options menu, a fourth tab row offers scoped `Start reached` and `Overdue` filters; clicking an active due tab again clears that due filter. Normal task views are already sorted by `When`, then `Prio`, then due date, then task title unless a column sort is active. The Kanban view uses the same card renderer, groups visible tasks into active columns `clarify`, `delegate`, `Open`, and `Started`, uses its own browser-only configurable badge-column count with default 3, keeps the same badge styling as compact list cards, uses flexible browser column tracks with a non-squeezing minimum, shows mobile edge fades/chevrons when additional columns are off-screen, snaps horizontally by column on phones, and sorts each Kanban column by the default task order.
+
+The link in the capture success message, such as `Task T-123 created`, opens the new task in the normal list detail view with Maximum details expanded, not directly in edit mode. From there the pencil icon opens editing; closing edit mode returns to the currently configured default overview for browser or phone. The message is cleared as soon as the user opens or starts capturing another task, unless they click the task-code link itself. Only the task name is required and explicitly marked as `required`; the criteria dropdowns remain optional and start visibly unset on every new capture because the app can derive `When` and `Prio` from missing or placeholder values. Other task links jump to the scope and view where the task is visible; for tagged tasks with an active tag tab, that means the matching tag scope plus the task's current view, while done and deleted tasks open the scoped `Done` or `Deleted` menu view. Pure save while staying in edit mode keeps the edited task visible even if a non-completion status change would otherwise remove it from the active filter. Completing a task closes edit mode and returns to the previous view; deleting keeps the previous view, while editing, restoring, and direct task links may still navigate to the matching visible view.
+
+Text fields use lightweight input guidance. Task names wrap in capture/edit fields, use a wider controlled field while capturing and editing, are not manually resizable, warn at 80 characters, warn stronger at 125, and stop at 250. Other multiline text fields scroll internally when needed, but none of them show a manual resize handle. Subtasks warn at 250 and stop at 1000. Comments warn at 500 and stop only at the high technical limit of 5000. Descriptions have no early warning and use a high technical limit of 20000. Tags stop at 24 characters, while assignee names and the Master Dispatcher stop at 60.
+
+Tasks assigned to someone other than the Master Dispatcher can store a separate `Follow-up` date. It answers `When frage ich nach?` and is independent from task start and due date, but it can never be later than the due date; when a due date exists, the Follow-up field shows that limit directly so blocked later dates are explained instead of only appearing disabled. The field is shown while capturing/editing delegated tasks, appears in compact card badges, is searchable/sortable/filterable, and is highlighted when a delegated task needs follow-up. The `...` menu entry `Close-out` shows a compact daily/weekly review: done today, done in the last 7 days, started, still open, overdue, and delegated without response, plus direct links to current Review tasks.
+
+In browser and phone edit mode, changed drafts stay in the edit draft until the header disk icon is pressed. The disk icon is grey and disabled without changes, and highlighted/clickable when there are unsaved changes, including local description/comment/subtask drafts. Clicking or touching outside the active task edit surface does not close the task and does not open a prompt. The edit view is always a single-task view: no table, list, Kanban board, tabs, or filter chips are shown around the active task, even when the browser tab resumes after a pause. Description edits happen inline in the Description section with the same local disk and `X` pattern as comments and subtasks. Clicking outside does not close local text editors; the local `X` asks in the familiar Save changes? dialog whether to save or discard that local draft only. Leaving an editor or edit mode with unsaved changes opens an `Save changes?` dialog with only `Discard` and `Save`. Discarding a freshly typed unsaved comment does not create it. In mobile editing, save, delete, completion, and close are available as same-size right-aligned header icons: disk, trash, check, and x. Completing and deleting tasks keep their explicit inline confirmations; in edit mode these prompts open directly below the header icons.
+Description editors grow from one line up to ten lines and then scroll internally; new subtask and new comment editors grow up to four lines, while existing subtask and comment editors grow with their content up to six lines and then scroll internally.
+All task-card action icons use the same shared icon button style for size, border, background, and neutral colors.
+Task edit mode is divided into four clearly separated, individually collapsible sections: `Parameter`, `Description`, `Subtasks`, and `Comments`. While `Parameter` is collapsed, it keeps showing the same compact overview values. Tapping a value opens only its tooltip; tapping the `Parameter` label or arrow expands the editable controls. Empty description, comment, and subtask areas show their prompt directly inside the field: `Write a new description`, `Write a new comment`, or `Write a new subtask`. Description, subtasks, and comments are edited inline with the same local save/discard pattern. No separate empty-state text is rendered below the fields. In the `...` options menu, each section can independently default to `Expanded` or `Collapsed` separately for browser and phone; all sections default to expanded on both devices. Card detail mode controls overview cards separately: `Minimum` hides parameter badges, card content, and the `Additional details` label; `Maximum` shows the parameter badges by default. Cards with a description, subtasks, or comments show a collapsible `Additional details` label below the badges; opening it reveals labeled panels such as `Parameter`, `Dependencies`, `Description`, `Subtasks`, and `Comments` depending on the current mode and content. The header task-detail icon switches the current view immediately between Minimum and Maximum, while Options define only the default for fresh sessions. Opening details on another task closes the previously opened detail block; clicking the same `Additional details` label toggles that task open/closed. Compact browser cards and phone editing use section headings, spacing, and colored divider lines; classic browser-table editing shows the same collapsible section labels inside the relevant cells. In the options menu, browser card badge columns can be set separately for overview cards, edit cards, and Kanban cards as `Default (3)` or any value from 1 to 8; the Kanban setting applies only to browser view. Phone list, edit, and Kanban cards keep the mobile card width and fixed 3-column mobile badge layout. Card rows are padded with empty `-` slots so the final row stays full and cards keep a consistent grid width.
+
+In Dark Mode, dialogs, dropdowns, picker popups, parameter controls including Tag and predecessor/successor selectors, the mobile When/Prio row, and the derived When/Prio display while capturing a new task on browser or phone use dark surfaces with light text. `When` and `Prio` badges use the same semantic colors in browser and phone views, regardless of Normal or Dark Mode.
+Dropdown controls and their headings use the same inherited font and 13px bold size across browser and phone.
+
+In browser and phone capture/edit mode, editable values and derived values expose tooltips with the current selection and a short explanation while `Show tooltips` is enabled in the `...` options menu. Derived `When` and `Prio` tooltips include their selected criteria. Selecting `Workability = Today/next` automatically sets both `Start date` and `Due` to today.
+In mobile edit mode, the task number and same-size header action icons sit in one row. The task title input is directly underneath, giving the icons enough touch space without squeezing the title.
+Compact task cards keep their task title visible in browser compact mode and their short meta values in aligned cells so `When`, `Prio`, status, assignee, and dates stay aligned across cards; phones always show three meta cells per row and wrap badge text instead of letting it overflow horizontally. Cards render the compact values in this order: `When`, `Prio`, status, assignee, action, tag, start date, and due date; done/deleted date appears only when the task is done or deleted. Compact values show the label before the colon only while the value is empty; `Start:` and `Due:` always keep their labels. The label before the colon stays neutral, followed by a small gap; only the value uses the semantic badge color. Prio values keep visible backgrounds: `prioritize` yellow, `P1` red, `P2` dark yellow, `P3` green. When values use: `clarify` yellow like `prioritize`, `now` red, `later` green like `P3`, and `someday` neutral without background. Real empty values show `-`; row-padding slots stay invisible and borderless while still reserving their grid cells so every compact card fills complete badge rows for the selected browser column count. On phones the count stays fixed at 3. In browser compact mode badge cells use a fixed width, and each card width follows the selected browser column count while staying independent of long task titles. Long cell values are shortened visually and remain available through the card tooltip behavior. Overview card tooltips for `When` and `Prio` also state that `When` answers `When should we act?` and `Prio`/priority answers `How important?`.
+In the browser table, dropdown-like data cells stay calm in read mode and turn into compact controls on hover/focus. Changing `Assignee`, `Action`, `Status`, `Start date`, or `Due` applies directly to the task. `Action` is editable only for assignees other than the Master Dispatcher; setting it to `assigned` automatically sets the task status to `Started`, while switching it back to `delegate` returns the task to `Open`. `When` and `Prio` are derived displays, not manual controls. Text, description, subtask, and dependency cells still open the focused row editor or popup when clicked.
+
+The `Upcoming` tab is the on-demand reminder view and the browser startup view. It lists open tasks and subtasks that are due today, overdue, ready to start, or still in `clarify`; if none match, it shows an empty state through the normal task list. Its counter turns into a red badge with a white number when pending tasks exist. Tasks in `Upcoming` can be reordered by drag-and-drop only while the standard List view is active, with early auto-scrolling near the visible top or bottom edge. In Minimum detail mode, parameter badges, extra card content, and the `Additional details` label stay hidden in List and Kanban. In Maximum detail mode, the badge grid is visible; tasks with a description, subtasks, or comments show a collapsible `Additional details` label that opens the labeled panels. Only one task detail block is open at a time. The order is stored locally and in `user_settings.due_reminder_order`, while newly appearing tasks are inserted according to the normal When/Prio/date sorting rule. Date checks tolerate stored date-only values and ISO timestamp values, so Supabase date formats and local date inputs are treated consistently. Selecting a task or subtask reminder opens the parent task in the Maximum detail view with details expanded; use the pencil icon to edit it.
+
+The `...` menu can export a metadata-rich backup JSON in addition to plain JSON and CSV. `Import` can import that backup format, older JSON task arrays, or CSV files after confirmation.
+
+## Planned Features
+
+- Zielarchitektur fuer langfristige Plattformunabhaengigkeit: gemeinsames Web-Frontend als Kern der App, lokale Storage-Schicht fuer Offline-first Nutzung, optionale Sync-Schicht spaeter z.B. ueber Google Drive, Android/iOS via Capacitor und Desktop via Tauri. Daten sollen lokal zuerst liegen, Sync nur ergaenzend arbeiten; fuer produktive Nutzung kein eigenes Backend und moeglichst keine Hosting-Abhaengigkeit voraussetzen.
+- Zielprozess fuer Entwicklung und Release nach der lokalen Zielarchitektur: Development, Test/Preview und Production als getrennte App-Kanaele behandeln, nicht nur als unterschiedliche URLs. Jede Umgebung braucht eigene App-/Bundle-Identifier, eigene lokale Storage-Namen bzw. Datenverzeichnisse und eigene optionale Sync-Ziele, damit Testversionen nie produktive Daten oeffnen. Entwicklung laeuft auf Feature-Branches mit lokalen Testdaten; nach Merge nach main entstehen Preview/Test-Builds mit separaten Testdaten; stabile Versionen werden per Versionstag, Changelog und Release-Builds fuer Web, Android/iOS und Desktop veroeffentlicht. Produktivdaten duerfen nur mit getesteten Release-Builds geoeffnet werden; Datenmodell-Aenderungen brauchen Migration, Backup und moeglichst Rueckfallstrategie.
+- Email to Task: allow emails sent to a dedicated address to become tasks in the app automatically. Preferred direction is provider-neutral inbound email, e.g. Cloudflare Email Routing/Email Worker plus Supabase insert, not a Gmail-only integration.
+- Optional mobile/web push notifications: notify explicitly opted-in devices about tasks that start today, are due today, or are overdue. Keep the in-app reminder popup as fallback. Likely direction is Web Push with per-device subscriptions in Supabase, VAPID keys, scheduled checks, duplicate-notification prevention, and special care for iOS because iPhones require the app to be added to the Home Screen for web push.
+- Optional REST API: future idea for creating, reading, updating, or linking tasks from external tools. If pursued, it should be authenticated, respect the separate per-user task lists, avoid exposing Supabase anon access directly as an integration contract, and start with a small protected endpoint surface such as task lookup by `task-id`, task creation, and status/date updates.
+- Alternative multi-user authentication with two-factor protection: investigate replacing or supplementing Google login with Supabase email/password or magic-link login plus TOTP MFA through authenticator apps. Keep the existing `allowed_users` whitelist, miro as admin, and separate per-user task lists/settings through `user_id`. Avoid SMS-based 2FA because it is usually not reliably free.
+
+## Development
+
+Install dependencies and start the local dev server:
+
+```powershell
+npm install
+npm run dev
+```
+
+The local dev server usually runs on:
+
+```text
+http://127.0.0.1:5180/
+```
+
+If Vite chooses another port, use the URL printed in the terminal.
+
+Useful checks:
+
+```powershell
+npm run lint
+npm run build
+```
+
+Implementation note: the overview prepares reusable task filter/search caches, shares the same mobile-card prop builder for list and Kanban cards, debounces remote user-settings sync, and uses `--task-card-*` CSS variables for card typography/badge sizing. These are refactoring-only optimizations and can be reverted as one commit if needed.
+
+## Environment Variables
+
+Create a local `.env` file. Do not commit it.
+
+```text
+VITE_SUPABASE_URL=https://izvmyvpxbmitajgopgar.supabase.co
+VITE_SUPABASE_ANON_KEY=<supabase anon public key>
+```
+
+The same variables must be configured in Vercel for Production and Preview.
+
+## Supabase
+
+The database schema is documented in:
+
+```text
+docs/supabase-schema.sql
+```
+
+Run that SQL in the Supabase SQL Editor when setting up a fresh project.
+
+Recent schema requirements include `tasks.tags` for task tag assignments, `tasks.dispatch_status` for persisted action state, displayed as `Delegate`/`Assigned` and stored internally as `delegieren`/`zugeteilt`, `user_settings.available_tags` for the synced tag catalog, `user_settings.selected_tag_tabs` for synced tag-tab settings, `user_settings.tab_layout` for the synced three-row tab arrangement, `user_settings.browser_compact_view` for the synced browser overview mode, `user_settings.card_badge_columns` for list/edit/browser-Kanban badge-column counts, `user_settings.default_view_mode` for the synced list/Kanban default, `user_settings.kanban_columns` for synced Kanban column visibility, `user_settings.edit_section_defaults` for separate browser/phone edit-section defaults, and `allowed_users` for app-managed Google access.
+
+The app expects Google Auth to be enabled in Supabase:
+
+```text
+Authentication -> Providers -> Google
+```
+
+Supabase URL configuration should include:
+
+```text
+Site URL: https://task-dispatcher.vercel.app
+Redirect URL: https://task-dispatcher.vercel.app
+```
+
+For local testing, also allow:
+
+```text
+http://127.0.0.1:5180
+http://localhost:5180
+```
+
+## Google OAuth
+
+Google Cloud OAuth client:
+
+- Application type: Web application
+- Authorized JavaScript origins:
+  - `http://127.0.0.1:5180`
+  - `http://localhost:5180`
+  - `https://task-dispatcher.vercel.app`
+- Authorized redirect URI:
+  - `https://izvmyvpxbmitajgopgar.supabase.co/auth/v1/callback`
+
+## Vercel
+
+Project:
+
+```text
+task-dispatcher
+```
+
+Recommended settings:
+
+```text
+Framework preset: Vite
+Build command: npm run build
+Output directory: dist
+```
+
+Vercel deploys automatically when `main` is pushed to GitHub.
+The repository includes `vercel.json` with `Cache-Control: no-store` so the task app should not keep serving old UI builds after a deployment.
+
+## Working Across Computers
+
+Start of a session:
+
+```powershell
+cd C:\Dev\task-dispatcher
+git pull
+git status
+```
+
+End of a session:
+
+```powershell
+git status
+git add -A
+git commit -m "WIP: current state"
+git push
+```
+
+Use `NEXT.md` as the handoff note between computers.
+- Follow-up dates are only relevant for externally assigned/delegated tasks; tasks owned by the Master Dispatcher hide and clear follow-up values.
+- Task card badges use the fixed order `When`, `Prio`, `Status`, `Tag`, `Assignee`, `Action`, `Created`, `Start`, `Due`, `Follow-up`; non-applicable badge slots use invisible placeholders so card layouts stay stable.
+- Confirmation dialogs, Review reasons, completion-block messages, tag placeholders, and Supabase error messages must use English UI text (`Yes`/`No`, not German labels).
+- In browser task edit mode, Tag, Assignee, Action, and Status form the first compact parameter row; Start date, Due, and Follow-up sit directly below. Action is visible there even when it is read-only because it is only calculated.
+- Tag, Predecessor, and Successor dropdown menus use separated row-style choices with wrapping text, hover states, and dark-mode styling so long task labels stay readable.
+- In browser task edit mode, Predecessors and Successors sit together as compact half-width fields below the main parameter rows; their dropdown menus use extra width for readable task labels.
+- Browser edit-mode Predecessor and Successor dropdown choices override the compact parameter-label width so each row uses the full dropdown width.
+- In Minimum detail mode, compact cards hide parameter badges, card content, and the `Additional details` label by default in List and Kanban. Maximum detail mode shows the badges, and tasks with a description, subtasks, or comments expose their content through a collapsible `Additional details` label.
