@@ -6,13 +6,11 @@ export default function TaskScopeTabs({
   activeAppTab,
   activeTagScope,
   counts,
-  upcomingCount,
   statusCounts,
   activeGoogleStatus,
   tagTabCounts,
   tabLayout,
   draggedTabRef,
-  onShowUpcoming,
   onShowTagScope,
   onShowListTab,
   onMoveTab,
@@ -22,22 +20,11 @@ export default function TaskScopeTabs({
   function getTabConfig(id) {
     if (isKanbanView && ["newest", "open", "started"].includes(id)) return null;
 
-    if (id === "upcoming") {
-      return {
-        label: "Upcoming",
-        count: upcomingCount,
-        countClassName: upcomingCount > 0 ? "alert" : "",
-        isActive: activeAppTab === "upcoming",
-        onClick: onShowUpcoming,
-        title: "Upcoming: everything that needs immediate attention"
-      };
-    }
-
     if (id === "all") {
       return {
         label: "All",
         count: counts.open + counts.started,
-        isActive: activeAppTab !== "capture" && activeAppTab !== "upcoming" && activeAppTab !== "review" && activeTagScope === "all",
+        isActive: activeAppTab !== "capture" && activeAppTab !== "review" && activeTagScope === "all",
         onClick: () => onShowTagScope("all"),
         title: "Show all active tasks in the current status or due tab"
       };
@@ -57,7 +44,7 @@ export default function TaskScopeTabs({
       return {
         label: "Open",
         count: statusCounts.open,
-        isActive: activeAppTab !== "capture" && activeAppTab !== "upcoming" && activeAppTab !== "newest" && activeGoogleStatus === "Offen",
+        isActive: activeAppTab !== "capture" && activeAppTab !== "newest" && activeGoogleStatus === "Offen",
         onClick: () => onShowListTab("open"),
         title: "Open: tasks in the current scope that are not started or done"
       };
@@ -67,7 +54,7 @@ export default function TaskScopeTabs({
       return {
         label: "Started",
         count: statusCounts.started,
-        isActive: activeAppTab !== "capture" && activeAppTab !== "upcoming" && activeGoogleStatus === "Gestartet",
+        isActive: activeAppTab !== "capture" && activeGoogleStatus === "Gestartet",
         onClick: () => onShowListTab("started"),
         title: "Show started tasks in the current scope"
       };
@@ -78,7 +65,7 @@ export default function TaskScopeTabs({
       return {
         label: `#${tag}`,
         count: tagTabCounts.get(tag.toLowerCase()) || 0,
-        isActive: activeAppTab !== "capture" && activeAppTab !== "upcoming" && activeTagScope.toLowerCase() === tag.toLowerCase(),
+        isActive: activeAppTab !== "capture" && activeTagScope.toLowerCase() === tag.toLowerCase(),
         onClick: () => onShowTagScope(tag),
         title: ""
       };

@@ -79,6 +79,7 @@ create table if not exists public.user_settings (
   dark_mode_browser boolean default false,
   dark_mode_mobile boolean default false,
   edit_section_defaults jsonb not null default '{"version":5,"browser":{"parameters":true,"description":true,"comments":true,"subtasks":true},"mobile":{"parameters":true,"description":true,"comments":true,"subtasks":true}}'::jsonb,
+  -- due_reminder_order is no longer read/written by the app since the Upcoming tab was removed; kept only for old rows.
   due_reminder_order jsonb not null default '[]'::jsonb,
   tab_layout jsonb not null default '[]'::jsonb,
   card_badge_columns jsonb not null default '{"overview":"default","edit":"default","kanban":"default"}'::jsonb,
@@ -139,6 +140,7 @@ end $$;
 alter table public.user_settings
 add column if not exists edit_section_defaults jsonb not null default '{"version":5,"browser":{"parameters":true,"description":true,"comments":true,"subtasks":true},"mobile":{"parameters":true,"description":true,"comments":true,"subtasks":true}}'::jsonb;
 
+-- due_reminder_order is no longer read/written by the app since the Upcoming tab was removed; kept only for old rows.
 alter table public.user_settings
 add column if not exists due_reminder_order jsonb not null default '[]'::jsonb;
 
@@ -160,6 +162,7 @@ alter column default_view_mode set default 'kanban';
 alter table public.user_settings
 add column if not exists default_view_mode_mobile text not null default 'kanban';
 
+-- 'active' is the only valid value since the Upcoming tab was removed; kept as a column for compatibility.
 alter table public.user_settings
 add column if not exists default_start_tab text not null default 'active';
 

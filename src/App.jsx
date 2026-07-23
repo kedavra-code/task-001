@@ -33,13 +33,6 @@ import {
   taskSubtasksToRows
 } from "./subtasks";
 import {
-  applyReminderOrder,
-  getReminderAutoScrollSpeed,
-  moveReminderTaskIds,
-  normalizeReminderOrder,
-  preserveHiddenReminderOrder
-} from "./reminderOrder";
-import {
   REVIEW_STALE_DAYS,
   clampFollowUpDateToDueDate,
   getTaskReviewReasons,
@@ -59,7 +52,6 @@ const DARK_MODE_BROWSER_STORAGE_KEY = "task-dispatcher.dark-mode-browser.v1";
 const DARK_MODE_MOBILE_STORAGE_KEY = "task-dispatcher.dark-mode-mobile.v1";
 const EDIT_SECTION_DEFAULTS_STORAGE_KEY = "task-dispatcher.edit-section-defaults.v1";
 const EDIT_SECTION_DEFAULTS_VERSION = 5;
-const DUE_REMINDER_ORDER_STORAGE_KEY = "task-dispatcher.due-reminder-order.v1";
 const DUE_TABS_VISIBLE_STORAGE_KEY = "task-dispatcher.due-tabs-visible.v1";
 const TAB_LAYOUT_STORAGE_KEY = "task-dispatcher.tab-layout.v1";
 const CARD_BADGE_COLUMNS_STORAGE_KEY = "task-dispatcher.card-badge-columns.v1";
@@ -203,7 +195,6 @@ function getDisplayListValue(value) {
 function getViewLabel(tab) {
   const labels = {
     capture: "New task",
-    upcoming: "Upcoming",
     review: "Review",
     newest: "Newest",
     open: "Open",
@@ -216,9 +207,8 @@ function getViewLabel(tab) {
 }
 const OTHER_ASSIGNEES_FILTER = "__other_assignees__";
 const ACTIVE_TAB = "active";
-const UPCOMING_TAB = "upcoming";
 const DEFAULT_START_TAB = ACTIVE_TAB;
-const START_TAB_OPTIONS = [ACTIVE_TAB, UPCOMING_TAB];
+const START_TAB_OPTIONS = [ACTIVE_TAB];
 const NEWEST_TAB = "newest";
 const REVIEW_TAB = "review";
 const REVIEW_INFO_ITEMS = [
@@ -227,8 +217,8 @@ const REVIEW_INFO_ITEMS = [
   "delegated tasks without response/follow-up",
   "tasks without start or due date"
 ];
-const STATUS_TABS = [UPCOMING_TAB, ACTIVE_TAB, REVIEW_TAB, "open", "started", NEWEST_TAB];
-const LIST_TABS = [UPCOMING_TAB, ACTIVE_TAB, REVIEW_TAB, "open", "started", NEWEST_TAB, "done"];
+const STATUS_TABS = [ACTIVE_TAB, REVIEW_TAB, "open", "started", NEWEST_TAB];
+const LIST_TABS = [ACTIVE_TAB, REVIEW_TAB, "open", "started", NEWEST_TAB, "done"];
 const DONE_TAB = "done";
 const DELETED_TAB = "deleted";
 const DELETED_RETENTION_DAYS = 30;
@@ -237,7 +227,7 @@ const STATUS_FILTER_BY_TAB = {
   started: "Gestartet"
 };
 const TAB_LAYOUT_ROW_COUNT = 3;
-const STATIC_TAB_IDS = ["upcoming", "all", "newest", "open", "started"];
+const STATIC_TAB_IDS = ["all", "newest", "open", "started"];
 const DUE_STATUS_OPTIONS = ["Alle", "heute starten", "heute fällig", "überfällig", "geplant", "ohne Fälligkeit"];
 const CRITERIA_PLACEHOLDER = "...";
 const HANDLUNGSDRUCK_OPTIONS = ["hoch", "mittel", "niedrig"];
@@ -1259,26 +1249,17 @@ function getTagFromTabId(id) {
 
 function getDefaultTabLayout(tags = []) {
   return [
-    ["upcoming"],
     ["all", ...normalizeTags(tags, 0).map(getTagTabId)],
-    ["newest", "open", "started"]
+    ["newest", "open", "started"],
+    []
   ];
-}
-
-function migrateLegacyDefaultTabLayout(layout) {
-  const rows = Array.isArray(layout) ? layout.map(row => (Array.isArray(row) ? [...row] : [])) : [];
-  if (rows[0]?.length === 2 && rows[0][0] === "all" && rows[0][1] === "upcoming") {
-    rows[0] = ["upcoming"];
-    rows[1] = ["all", ...(rows[1] || []).filter(id => id !== "all" && id !== "upcoming")];
-  }
-  return rows;
 }
 
 function normalizeTabLayout(layout, tags = []) {
   const activeTags = normalizeTags(tags, 0);
   const activeTagIds = activeTags.map(getTagTabId);
   const allowedIds = new Set([...STATIC_TAB_IDS, ...activeTagIds]);
-  const sourceRows = migrateLegacyDefaultTabLayout(layout);
+  const sourceRows = Array.isArray(layout) ? layout.map(row => (Array.isArray(row) ? [...row] : [])) : [];
   const rows = Array.from({ length: TAB_LAYOUT_ROW_COUNT }, () => []);
   const seenIds = new Set();
 
@@ -1853,7 +1834,6 @@ async function loadRemoteUserSettings(userId) {
         tooltipsEnabled: null,
         darkModeSettings: null,
         editSectionDefaults: null,
-        dueReminderOrder: null,
         tabLayout: null,
         cardBadgeColumns: null,
         defaultViewModes: null,
@@ -1865,14 +1845,6 @@ async function loadRemoteUserSettings(userId) {
     throw error;
   }
   if (!data) return null;
-
-  const { data: reminderOrderData, error: reminderOrderError } = await supabase
-    .from("user_settings")
-    .select("due_reminder_order")
-    .eq("user_id", userId)
-    .maybeSingle();
-  const missingReminderOrderColumn = reminderOrderError && String(reminderOrderError.message || "").toLowerCase().includes("due_reminder_order");
-  if (reminderOrderError && !missingReminderOrderColumn) throw reminderOrderError;
 
   const { data: tabLayoutData, error: tabLayoutError } = await supabase
     .from("user_settings")
@@ -1963,7 +1935,6 @@ async function loadRemoteUserSettings(userId) {
         mobile: mobileDarkMode ?? legacyDarkMode
       }),
     editSectionDefaults: missingEditSectionDefaultsColumn ? null : normalizeEditSectionDefaults(editSectionDefaultsData?.edit_section_defaults),
-    dueReminderOrder: missingReminderOrderColumn ? null : normalizeReminderOrder(reminderOrderData?.due_reminder_order),
     tabLayout: missingTabLayoutColumn ? null : normalizeTabLayout(tabLayoutData?.tab_layout, normalizeTags(data?.selected_tag_tabs, 0)),
     cardBadgeColumns: missingCardBadgeColumnsColumn ? null : normalizeCardBadgeColumns(cardBadgeColumnsData?.card_badge_columns),
     defaultViewModes: missingDefaultViewModeColumn ? null : {
@@ -2012,7 +1983,7 @@ async function updateOptionalUserSettingColumns(userId, values, missingColumnNam
   if (!missingColumnNames.some(columnName => message.includes(columnName))) throw error;
 }
 
-async function saveRemoteUserSettings(userId, selectedTagTabs, tagCatalog, browserCompactView, masterDispatcherName, tooltipsEnabled, darkModeSettings, editSectionDefaults, dueReminderOrder, tabLayout, cardBadgeColumns, defaultViewModes, defaultStartTabs, kanbanColumnKeys, upcomingBadgeDefaults) {
+async function saveRemoteUserSettings(userId, selectedTagTabs, tagCatalog, browserCompactView, masterDispatcherName, tooltipsEnabled, darkModeSettings, editSectionDefaults, tabLayout, cardBadgeColumns, defaultViewModes, defaultStartTabs, kanbanColumnKeys, upcomingBadgeDefaults) {
   const normalizedDarkModeSettings = normalizeDarkModeSettings(darkModeSettings);
   const { error } = await supabase
     .from("user_settings")
@@ -2032,10 +2003,6 @@ async function saveRemoteUserSettings(userId, selectedTagTabs, tagCatalog, brows
     }
     throw error;
   }
-
-  await updateOptionalUserSettingColumns(userId, {
-    due_reminder_order: normalizeReminderOrder(dueReminderOrder)
-  }, ["due_reminder_order"]);
 
   await updateOptionalUserSettingColumns(userId, {
     tab_layout: normalizeTabLayout(tabLayout, selectedTagTabs)
@@ -2345,14 +2312,6 @@ function loadTagCatalog() {
   }
 }
 
-function loadDueReminderOrder() {
-  try {
-    return normalizeReminderOrder(JSON.parse(localStorage.getItem(DUE_REMINDER_ORDER_STORAGE_KEY) || "[]"));
-  } catch {
-    return [];
-  }
-}
-
 function loadTabLayout() {
   try {
     const layout = JSON.parse(localStorage.getItem(TAB_LAYOUT_STORAGE_KEY) || "[]");
@@ -2365,14 +2324,6 @@ function loadTabLayout() {
 function saveTabLayout(layout, tags = []) {
   try {
     localStorage.setItem(TAB_LAYOUT_STORAGE_KEY, JSON.stringify(normalizeTabLayout(layout, tags)));
-  } catch {
-    // Local UI preference only.
-  }
-}
-
-function saveDueReminderOrder(order) {
-  try {
-    localStorage.setItem(DUE_REMINDER_ORDER_STORAGE_KEY, JSON.stringify(normalizeReminderOrder(order)));
   } catch {
     // Local UI preference only.
   }
@@ -3444,9 +3395,7 @@ export default function App() {
   const [isUserManagerOpen, setIsUserManagerOpen] = useState(false);
   const [selectedTagTabs, setSelectedTagTabs] = useState(loadSelectedTagTabs);
   const [tagCatalog, setTagCatalog] = useState(loadTagCatalog);
-  const [dueReminderOrder, setDueReminderOrder] = useState(loadDueReminderOrder);
   const [tabLayout, setTabLayout] = useState(loadTabLayout);
-  const [draggedDueReminderTaskId, setDraggedDueReminderTaskId] = useState("");
   const kanbanDragRef = useRef({ active: false, pointerId: null, startX: 0, scrollLeft: 0, didDrag: false });
   const [isSettingsLoaded, setIsSettingsLoaded] = useState(!isSupabaseConfigured);
   const [showBackToTop, setShowBackToTop] = useState(false);
@@ -3462,7 +3411,6 @@ export default function App() {
   const handledDeepLinkTaskParamRef = useRef("");
   const importFormatRef = useRef("json");
   const draggedTagTabRef = useRef("");
-  const dueReminderTasks = useMemo(() => applyReminderOrder(getDueReminderTasks(tasks), dueReminderOrder), [tasks, dueReminderOrder]);
   const isCurrentUserAllowed = !isSupabaseConfigured || Boolean(session?.user && isAccessListLoaded && isAllowedUser(session.user, allowedUserEmails));
   const isCurrentUserAdmin = Boolean(session?.user && isAdminUser(session.user));
   const getTooltip = (field, value) => areTooltipsEnabled ? getEditTooltip(field, value) : undefined;
@@ -3644,7 +3592,6 @@ export default function App() {
   useEffect(() => {
     saveSelectedTagTabs(selectedTagTabs);
     saveTagCatalog(tagCatalog);
-    saveDueReminderOrder(dueReminderOrder);
     saveTabLayout(visibleTabLayout, activeSelectedTagTabs);
 
     if (!isSettingsLoaded || !isSupabaseConfigured || !session?.user?.id || !isCurrentUserAllowed) return undefined;
@@ -3659,7 +3606,6 @@ export default function App() {
         areTooltipsEnabled,
         darkModeSettings,
         editSectionDefaults,
-        dueReminderOrder,
         visibleTabLayout,
         cardBadgeColumns,
         defaultViewModes,
@@ -3672,13 +3618,7 @@ export default function App() {
     }, 400);
 
     return () => window.clearTimeout(syncSettingsTimeout);
-  }, [selectedTagTabs, tagCatalog, dueReminderOrder, visibleTabLayout, activeSelectedTagTabs, isBrowserCompactView, masterDispatcherName, areTooltipsEnabled, darkModeSettings, editSectionDefaults, cardBadgeColumns, defaultViewModes, defaultStartTabs, kanbanColumnKeys, upcomingBadgeDefaults, isSettingsLoaded, session, isCurrentUserAllowed]);
-
-  useEffect(() => {
-    if (activeAppTab === UPCOMING_TAB && activeTagScope !== "all") {
-      setActiveTagScope("all");
-    }
-  }, [activeAppTab, activeTagScope]);
+  }, [selectedTagTabs, tagCatalog, visibleTabLayout, activeSelectedTagTabs, isBrowserCompactView, masterDispatcherName, areTooltipsEnabled, darkModeSettings, editSectionDefaults, cardBadgeColumns, defaultViewModes, defaultStartTabs, kanbanColumnKeys, upcomingBadgeDefaults, isSettingsLoaded, session, isCurrentUserAllowed]);
 
   useEffect(() => {
     if (!isLoaded || !isCurrentUserAllowed) return;
@@ -3856,9 +3796,6 @@ export default function App() {
             setUpcomingBadgeDefaults(remoteSettings.upcomingBadgeDefaults);
           }
 
-          if (remoteSettings.dueReminderOrder !== null) {
-            setDueReminderOrder(remoteSettings.dueReminderOrder);
-          }
           if (remoteSettings.tabLayout !== null) {
             setTabLayout(remoteSettings.tabLayout);
           }
@@ -4001,11 +3938,9 @@ export default function App() {
   }, [tasks, tasksById, childIdsByParent, masterDispatcherName]);
 
   const visibleTasks = useMemo(() => {
-    const sortedTasks = activeAppTab === UPCOMING_TAB
-      ? dueReminderTasks
-      : activeAppTab === NEWEST_TAB
-        ? sortTasksByCreatedAt(tasks)
-        : sortTasksWithFilters(tasks, columnFilters, masterDispatcherName, tasksById, childIdsByParent);
+    const sortedTasks = activeAppTab === NEWEST_TAB
+      ? sortTasksByCreatedAt(tasks)
+      : sortTasksWithFilters(tasks, columnFilters, masterDispatcherName, tasksById, childIdsByParent);
     return sortedTasks.filter(task => {
       const cache = taskFilterCacheById.get(task.id) || getTaskFilterCache(task, tasksById, childIdsByParent, masterDispatcherName);
       const actionStatus = cache.actionStatus;
@@ -4015,19 +3950,17 @@ export default function App() {
         columnFilters.prio === "Alle" || getEffectivePrio(task.prio) === columnFilters.prio;
       const matchesActionStatus =
         columnFilters.actionStatus === "Alle" || actionStatus === columnFilters.actionStatus;
-      const matchesViewStatus = activeAppTab === UPCOMING_TAB
-        ? shouldShowDueReminder(task)
-        : activeAppTab === REVIEW_TAB
-          ? shouldShowInReview(task, { masterDispatcherName })
-          : activeAppTab === DONE_TAB
-          ? isDone(task)
+      const matchesViewStatus = activeAppTab === REVIEW_TAB
+        ? shouldShowInReview(task, { masterDispatcherName })
+        : activeAppTab === DONE_TAB
+        ? isDone(task)
         : activeAppTab === DELETED_TAB
           ? true
           : activeAppTab === NEWEST_TAB || activeAppTab === ACTIVE_TAB
             ? !isDone(task)
             : matchesGoogleStatusFilter(task, columnFilters.googleStatus);
       const matchesDueStatus = matchesDueStatusFilter(task, columnFilters.dueStatus);
-      const matchesTagScope = activeAppTab === UPCOMING_TAB || activeAppTab === REVIEW_TAB || activeTagScope === "all" || hasTag(task, activeTagScope);
+      const matchesTagScope = activeAppTab === REVIEW_TAB || activeTagScope === "all" || hasTag(task, activeTagScope);
       const matchesDeletedScope = activeAppTab === DELETED_TAB ? isDeleted(task) : !isDeleted(task);
       const tagText = cache.tagText;
       const matchesTagFilter = columnFilters.tagFilter === "-"
@@ -4068,7 +4001,7 @@ export default function App() {
         matchesDeletedScope
       );
     });
-  }, [tasks, dueReminderTasks, columnFilters, isOverviewSearchActive, masterDispatcherName, activeTagScope, activeAppTab, tasksById, childIdsByParent, taskFilterCacheById]);
+  }, [tasks, columnFilters, isOverviewSearchActive, masterDispatcherName, activeTagScope, activeAppTab, tasksById, childIdsByParent, taskFilterCacheById]);
 
   const visibleTasksWithEditingTask = useMemo(() => {
     if (!editingId) return visibleTasks;
@@ -4217,7 +4150,6 @@ export default function App() {
     const tagCounts = new Map();
     const nextCounts = {
       byWann,
-      upcoming: 0,
       open: 0,
       started: 0,
       newest: 0,
@@ -4238,7 +4170,6 @@ export default function App() {
         return;
       }
 
-      if (shouldShowDueReminder(task)) nextCounts.upcoming += 1;
       if (shouldShowInReview(task, { masterDispatcherName })) nextCounts.review += 1;
       if (task.googleStatus === "Offen") nextCounts.open += 1;
       if (task.googleStatus === "Gestartet") nextCounts.started += 1;
@@ -4267,9 +4198,7 @@ export default function App() {
   const scopedStatusCounts = useMemo(() => {
     const scopedTasks = tasks.filter(task => activeTagScope === "all" || hasTag(task, activeTagScope));
     const activeScopedTasks = scopedTasks.filter(task => !isDeleted(task));
-    const activeTasks = tasks.filter(task => !isDeleted(task));
     return {
-      upcoming: activeTasks.filter(shouldShowDueReminder).length,
       open: activeScopedTasks.filter(task => task.googleStatus === "Offen").length,
       started: activeScopedTasks.filter(task => task.googleStatus === "Gestartet").length,
       newest: activeScopedTasks.filter(task => !isDone(task)).length,
@@ -4282,7 +4211,6 @@ export default function App() {
     const scopedTasks = tasks.filter(task => {
       if (activeTagScope !== "all" && !hasTag(task, activeTagScope)) return false;
       if (isDeleted(task)) return false;
-      if (activeAppTab === UPCOMING_TAB) return shouldShowDueReminder(task);
       return task.googleStatus === (STATUS_FILTER_BY_TAB[activeAppTab] || "Offen");
     });
     return {
@@ -4404,7 +4332,6 @@ export default function App() {
     const isTaskDetailsOpen = openDescriptionTaskId === task.id;
     return {
       task,
-      dragProps: getUpcomingTaskDragProps(task),
       highlightedTaskId,
       isEditing: editingId === task.id,
       hasUnsavedChanges: editingId === task.id && hasAnyUnsavedEditChanges,
@@ -4772,11 +4699,6 @@ export default function App() {
     setActionMessage("Tab layout reset.");
   }
 
-  function resetDueReminderOrder() {
-    setDueReminderOrder([]);
-    setActionMessage("Upcoming order reset.");
-  }
-
   function removeCatalogTag(tag) {
     const normalizedTag = normalizeTag(tag);
     if (!normalizedTag) return;
@@ -4919,10 +4841,10 @@ export default function App() {
   function showListTab(tab) {
     requestEditExit(() => {
       setActionMessage("");
-      const isActiveListTab = tab !== UPCOMING_TAB && tab !== REVIEW_TAB && activeAppTab === tab && columnFilters.dueStatus === "Alle";
+      const isActiveListTab = tab !== REVIEW_TAB && activeAppTab === tab && columnFilters.dueStatus === "Alle";
       const nextTab = isActiveListTab ? ACTIVE_TAB : tab;
-      const nextDueStatus = isActiveListTab || tab === NEWEST_TAB || tab === UPCOMING_TAB || tab === REVIEW_TAB ? "Alle" : columnFilters.dueStatus;
-      if (tab === UPCOMING_TAB || tab === REVIEW_TAB) setActiveTagScope("all");
+      const nextDueStatus = isActiveListTab || tab === NEWEST_TAB || tab === REVIEW_TAB ? "Alle" : columnFilters.dueStatus;
+      if (tab === REVIEW_TAB) setActiveTagScope("all");
       setActiveAppTab(nextTab);
       clearEdit();
       setColumnFilters({ ...getDefaultColumnFilters(nextTab), dueStatus: nextDueStatus });
@@ -4962,7 +4884,7 @@ export default function App() {
     requestEditExit(() => {
       setActionMessage("");
       setActiveTagScope(tag);
-      const nextTab = activeAppTab === UPCOMING_TAB || activeAppTab === REVIEW_TAB
+      const nextTab = activeAppTab === REVIEW_TAB
         ? ACTIVE_TAB
         : [...LIST_TABS, DELETED_TAB].includes(activeAppTab)
           ? activeAppTab
@@ -5346,58 +5268,6 @@ export default function App() {
     });
   }
 
-  function moveDueReminderTask(sourceId, targetId) {
-    const reorderedVisibleIds = moveReminderTaskIds(
-      dueReminderTasks.map(task => task.id),
-      sourceId,
-      targetId
-    );
-    setDueReminderOrder(current => preserveHiddenReminderOrder(current, reorderedVisibleIds));
-  }
-
-  function scrollDuringDueReminderDrag(event) {
-    const tableScrollContainer = event.currentTarget.closest?.(".tableWrap");
-    const canScrollTable = tableScrollContainer && tableScrollContainer.scrollHeight > tableScrollContainer.clientHeight + 1;
-    if (canScrollTable) {
-      const rect = tableScrollContainer.getBoundingClientRect();
-      const speed = getReminderAutoScrollSpeed(event.clientY, rect.top, rect.bottom);
-      if (speed) tableScrollContainer.scrollTop += speed;
-      return;
-    }
-
-    const speed = getReminderAutoScrollSpeed(event.clientY, 0, window.innerHeight);
-    if (speed) window.scrollBy(0, speed);
-  }
-
-  function getUpcomingTaskDragProps(task) {
-    if (activeAppTab !== UPCOMING_TAB || isKanbanView || editingId) return {};
-
-    return {
-      draggable: true,
-      "data-dragging": draggedDueReminderTaskId === task.id ? "true" : undefined,
-      "data-due-reminder-task-id": task.id,
-      onDragStart: event => {
-        setDraggedDueReminderTaskId(task.id);
-        event.dataTransfer.effectAllowed = "move";
-        event.dataTransfer.setData("text/plain", task.id);
-      },
-      onDragOver: event => {
-        event.preventDefault();
-        event.dataTransfer.dropEffect = "move";
-        scrollDuringDueReminderDrag(event);
-      },
-      onDrop: event => {
-        event.preventDefault();
-        const sourceId = draggedDueReminderTaskId || event.dataTransfer.getData("text/plain");
-        if (!sourceId || sourceId === task.id) return;
-        moveDueReminderTask(sourceId, task.id);
-      },
-      onDragEnd: () => {
-        setDraggedDueReminderTaskId("");
-      }
-    };
-  }
-
   function updateEditSectionDefault(device, section, value) {
     setEditSectionDefaults(current => normalizeEditSectionDefaults({
       ...current,
@@ -5546,28 +5416,7 @@ export default function App() {
             <option value="kanban">Kanban</option>
           </select>
         </label>
-        <label className="menuSetting defaultViewModeSetting" title="Sets whether the browser opens on All or Upcoming. This setting is persistent.">
-          <span>Start tab browser</span>
-          <select
-            value={defaultStartTabs.browser}
-            onChange={event => setDefaultStartTabs(current => ({ ...current, browser: normalizeDefaultStartTab(event.target.value) }))}
-            title="Choose browser start tab"
-          >
-            <option value={ACTIVE_TAB}>All</option>
-            <option value={UPCOMING_TAB}>Upcoming</option>
-          </select>
-        </label>
-        <label className="menuSetting defaultViewModeSetting" title="Sets whether the phone opens on All or Upcoming. This setting is persistent.">
-          <span>Start tab phone</span>
-          <select
-            value={defaultStartTabs.mobile}
-            onChange={event => setDefaultStartTabs(current => ({ ...current, mobile: normalizeDefaultStartTab(event.target.value) }))}
-            title="Choose phone start tab"
-          >
-            <option value={ACTIVE_TAB}>All</option>
-            <option value={UPCOMING_TAB}>Upcoming</option>
-          </select>
-        </label>        <label className="menuCheckbox" title="Shows help text for fields, card values, and derived values.">
+        <label className="menuCheckbox" title="Shows help text for fields, card values, and derived values.">
           <input
             type="checkbox"
             checked={areTooltipsEnabled}
@@ -5585,11 +5434,8 @@ export default function App() {
           />
           <span>Show due tabs</span>
         </label>
-        <button type="button" className="secondaryButton menuResetTabsButton" onClick={resetTabLayout} title="Resets tab layout to Upcoming, All/tags, Newest/Open/Started.">
+        <button type="button" className="secondaryButton menuResetTabsButton" onClick={resetTabLayout} title="Resets tab layout to All/tags, Newest/Open/Started.">
           Reset tabs
-        </button>
-        <button type="button" className="secondaryButton menuResetReminderOrderButton" onClick={resetDueReminderOrder} title="Resets the manual drag-and-drop order in Upcoming; default sorting applies afterwards.">
-          Reset Upcoming order
         </button>
         <span className="menuGroupTitle">Layout</span>
         <label className="menuSetting layoutSetting" title="Switches browser layout between light and dark mode.">
@@ -6153,13 +5999,11 @@ export default function App() {
             activeAppTab={activeAppTab}
             activeTagScope={activeTagScope}
             counts={counts}
-            upcomingCount={scopedStatusCounts.upcoming}
             statusCounts={scopedStatusCounts}
             activeGoogleStatus={columnFilters.googleStatus}
             tagTabCounts={tagTabCounts}
             tabLayout={visibleTabLayout}
             draggedTabRef={draggedTagTabRef}
-            onShowUpcoming={() => showListTab(UPCOMING_TAB)}
             onShowTagScope={showTagScope}
             onShowListTab={showListTab}
             onMoveTab={moveVisibleTab}
@@ -6626,7 +6470,6 @@ export default function App() {
                 <TaskRow
                   key={task.id}
                   task={task}
-                  dragProps={getUpcomingTaskDragProps(task)}
                   highlightedTaskId={highlightedTaskId}
                   isEditing={editingId === task.id}
                   hasUnsavedChanges={editingId === task.id && hasAnyUnsavedEditChanges}
@@ -6811,7 +6654,7 @@ export default function App() {
                 <h3>Navigation</h3>
                 <ul>
                   <li>The top title resets the session to All without status, due, tag, or column filters. Current view, scope, mode, and search are shown in the info line below the tabs; the filter icon shows the active filter/sort count and lists them on hover. Done and Deleted count as view filters and can be left with Reset filters.</li>
-                  <li>All and Upcoming are the primary tabs. Upcoming contains everything that needs immediate attention: clarification, reached start dates, due-today work, overdue work, and matching subtask reminders.</li>
+                  <li>All is the primary tab. Tasks that need immediate attention, such as clarification, reached start dates, due-today work, overdue work, and matching subtask reminders, are marked directly on the task with a red exclamation mark and can also be shown as the optional Start reached and Overdue due tabs.</li>
                   <li>All and tag tabs share the tag row, with All first by default. Newest, Open, and Started are status views; Done, Deleted, Review, and Close-out are available from Options.</li>
                   <li>The search field is session-only and searches across all active tasks regardless of the currently selected tab or filters. In Done, it searches done tasks only; in Deleted, it searches deleted tasks only.</li>
                 </ul>
@@ -6821,7 +6664,7 @@ export default function App() {
                 <h3>Views</h3>
                 <ul>
                   <li>The header view icon switches the current session between List and Kanban. That toggle is temporary; persistent defaults are changed only in Options.</li>
-                  <li>Browser and phone can have separate default view modes, separate default start tabs, and separate edit-section defaults. Edit sections default to expanded on both devices and are stored in user settings when the Supabase columns exist, with local storage as fallback.</li>
+                  <li>Browser and phone can have separate default view modes and separate edit-section defaults. Edit sections default to expanded on both devices and are stored in user settings when the Supabase columns exist, with local storage as fallback.</li>
                   <li>Task details can be switched with the header icon for the current view. Options set only the default for fresh sessions: Minimum hides parameter badges and card content, including the Additional details label. Maximum shows parameter badges; cards with a description, subtasks, or comments then show a collapsible Additional details label below the badges, and opening it reveals the labeled content panels.</li>
                   <li>Kanban groups active tasks into the enabled columns Clarify, Delegate, Open, and Started. Open, Started, and Newest tabs are hidden while Kanban is active because those states are represented by board columns.</li>
                   <li>On phones, Kanban scrolls horizontally by column, shows edge hints when more columns are available, and snaps to the next column while scrolling.</li>
@@ -6846,7 +6689,7 @@ export default function App() {
                   <li>Empty values show a dash. Start and Due keep their labels visible and may wrap to two lines on phones after the colon so the date stays visible.</li>
                   <li>Reached start dates, due-today dates, and overdue due dates are shown by coloring the date value red instead of adding separate badges.</li>
                   <li>Predecessors and Successors are shown as labeled clickable text in the card details outside edit mode and can be clicked to jump to the related task while keeping the current view. In Minimum detail mode, card details and the Additional details label stay hidden; in Maximum detail mode, badges are visible and cards with description, subtasks, or comments can open the labeled detail panels through the Additional details label.</li>
-                  <li>Adjacent icons use the same size. Share, delete, and completion are the card action icons; relation arrow icons are intentionally not shown. The Share icon includes a direct task URL such as ?task-id=T-123, which opens the task in Maximum detail view after login. Clicking a task ID locally opens that card with the same Maximum detail layout, without changing the global view mode, and renders detail content only for that one currently open card. Task content opens through the collapsible Additional details label below the badges when description, subtasks, or comments exist. The save icon is a disk, completion uses a check, delete uses trash, close uses x, and an Upcoming warning uses a red exclamation mark near the task ID.</li>
+                  <li>Adjacent icons use the same size. Share, delete, and completion are the card action icons; relation arrow icons are intentionally not shown. The Share icon includes a direct task URL such as ?task-id=T-123, which opens the task in Maximum detail view after login. Clicking a task ID locally opens that card with the same Maximum detail layout, without changing the global view mode, and renders detail content only for that one currently open card. Task content opens through the collapsible Additional details label below the badges when description, subtasks, or comments exist. The save icon is a disk, completion uses a check, delete uses trash, close uses x, and a due-reminder warning uses a red exclamation mark near the task ID.</li>
                 </ul>
               </section>
 
@@ -6868,7 +6711,7 @@ export default function App() {
                 <ul>
                   <li>Subtasks are an internal checklist inside a task. They remain visible when done, can be reopened, and all subtasks must be done before the parent task can be completed.</li>
                   <li>Subtasks use the same inline create/edit card pattern as comments: an empty input sits at the top, existing entries are visually separated, and save, trash/delete, and done icons sit on the right. Start and Due date fields remain available for subtasks.</li>
-                  <li>Subtasks can have optional start and due dates. Those dates are included in Upcoming reminders as long as the parent task and subtask are still open. New subtasks use a disk icon to save and an x icon to discard the pending input.</li>
+                  <li>Subtasks can have optional start and due dates. Those dates are included in the due/overdue reminders as long as the parent task and subtask are still open. New subtasks use a disk icon to save and an x icon to discard the pending input.</li>
                   <li>Comments appear below subtasks. New comments are inserted at the top and store creation and edit dates. Comment and subtask text fields use the same editor width as the description field.</li>
                 </ul>
               </section>
@@ -6876,10 +6719,10 @@ export default function App() {
               <section>
                 <h3>Options</h3>
                 <ul>
-                  <li>Options contains persistent settings for layout, dark mode, tooltips, browser/phone edit section defaults, due tabs, tab layout, badge columns, Kanban columns, default views, default start tabs, tags, users, import/export, and logout.</li>
+                  <li>Options contains persistent settings for layout, dark mode, tooltips, browser/phone edit section defaults, due tabs, tab layout, badge columns, Kanban columns, default views, tags, users, import/export, and logout.</li>
                   <li>Only settings changed in Options persist across app restarts. Working selections such as active tab, tag scope, search text, filters, column sorts, the header List/Kanban toggle, and the header task-detail toggle remain session-only while the app is open. A fresh app session starts from the Options defaults.</li>
                   <li>Tags are managed in Options. Up to 10 tags can exist, selected tags can become top-row tag tabs, and tag order can be changed by drag-and-drop.</li>
-                  <li>The optional due tabs Start reached and Overdue can be shown or hidden from Options. Hidden due tabs do not remove the underlying Upcoming behavior.</li>
+                  <li>The optional due tabs Start reached and Overdue can be shown or hidden from Options. Hidden due tabs do not remove the underlying red due-date coloring or the exclamation-mark reminder on tasks.</li>
                 </ul>
               </section>
             </div>

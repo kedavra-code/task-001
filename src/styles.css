@@ -709,36 +709,9 @@ main {
   font-weight: 900;
 }
 
-.tabCount.alert {
-  border: 2px solid #ffffff;
-  background: #b42318;
-  color: #ffffff;
-}
-
 .appTabs button.active .tabCount {
   background: #ffffff;
   color: #1f6feb;
-}
-
-.appTabs button.active .tabCount.alert {
-  background: #b42318;
-  color: #ffffff;
-}
-
-[data-due-reminder-task-id][draggable="true"] {
-  cursor: grab;
-}
-
-[data-due-reminder-task-id][draggable="true"]:active,
-[data-due-reminder-task-id][draggable="true"][data-dragging="true"] {
-  cursor: grabbing;
-}
-
-[data-due-reminder-task-id][draggable="true"] input,
-[data-due-reminder-task-id][draggable="true"] textarea,
-[data-due-reminder-task-id][draggable="true"] select,
-[data-due-reminder-task-id][draggable="true"] button {
-  cursor: pointer;
 }
 
 .appTabs .tagTabButton {
@@ -781,8 +754,7 @@ main {
   font-weight: 800;
 }
 
-.menuResetTabsButton,
-.menuResetReminderOrderButton {
+.menuResetTabsButton {
   width: 100%;
 }
 

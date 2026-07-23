@@ -14,12 +14,6 @@ import {
   taskSubtasksToRows
 } from "../src/subtasks.js";
 
-import {
-  applyReminderOrder,
-  getReminderAutoScrollSpeed,
-  moveReminderTaskIds,
-  preserveHiddenReminderOrder
-} from "../src/reminderOrder.js";
 import { matchesFreeTextSearch, matchesGlobalTaskSearch } from "../src/taskSearch.js";
 import {
   clampFollowUpDateToDueDate,
@@ -271,33 +265,6 @@ test("subtasks convert to task_subtasks rows in order", () => {
     }
   ]);
 });
-
-test("saved reminder order overrides the standard order", () => {
-  const standardTasks = [task({ id: "a" }), task({ id: "b" }), task({ id: "c" })];
-  assert.deepEqual(applyReminderOrder(standardTasks, ["c", "a", "b"]).map(item => item.id), ["c", "a", "b"]);
-});
-
-test("new reminder tasks are inserted at their standard position", () => {
-  const standardTasks = [task({ id: "a" }), task({ id: "new" }), task({ id: "b" })];
-  assert.deepEqual(applyReminderOrder(standardTasks, ["b", "a"]).map(item => item.id), ["b", "new", "a"]);
-});
-
-test("reminder drag order preserves currently hidden task ids", () => {
-  const moved = moveReminderTaskIds(["a", "b", "c"], "c", "a");
-  assert.deepEqual(moved, ["c", "a", "b"]);
-  assert.deepEqual(preserveHiddenReminderOrder(["a", "hidden", "b", "c"], moved), ["c", "hidden", "a", "b"]);
-});
-
-test("reminder drag auto-scrolls before reaching popup edges", () => {
-  assert.equal(getReminderAutoScrollSpeed(200, 100, 400), 0);
-  assert.ok(getReminderAutoScrollSpeed(180, 100, 400) < 0);
-  assert.ok(getReminderAutoScrollSpeed(320, 100, 400) > 0);
-  assert.ok(getReminderAutoScrollSpeed(110, 100, 400) < 0);
-  assert.ok(getReminderAutoScrollSpeed(390, 100, 400) > 0);
-  assert.equal(getReminderAutoScrollSpeed(100, 100, 400), -14);
-  assert.equal(getReminderAutoScrollSpeed(400, 100, 400), 14);
-});
-
 
 test("follow-up dates are clamped to due dates", () => {
   assert.equal(clampFollowUpDateToDueDate("2026-06-10", "2026-06-03"), "2026-06-03");
