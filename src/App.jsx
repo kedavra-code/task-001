@@ -1249,17 +1249,25 @@ function getTagFromTabId(id) {
 
 function getDefaultTabLayout(tags = []) {
   return [
-    ["all", ...normalizeTags(tags, 0).map(getTagTabId)],
-    ["newest", "open", "started"],
-    []
+    ["all"],
+    normalizeTags(tags, 0).map(getTagTabId),
+    ["newest", "open", "started"]
   ];
+}
+
+function migrateLegacyTabLayout(rows) {
+  const [row0 = [], row1 = [], row2 = []] = rows;
+  if (row0[0] !== "all" || row0.length <= 1) return rows;
+  return [["all"], row0.slice(1), [...row1, ...row2]];
 }
 
 function normalizeTabLayout(layout, tags = []) {
   const activeTags = normalizeTags(tags, 0);
   const activeTagIds = activeTags.map(getTagTabId);
   const allowedIds = new Set([...STATIC_TAB_IDS, ...activeTagIds]);
-  const sourceRows = Array.isArray(layout) ? layout.map(row => (Array.isArray(row) ? [...row] : [])) : [];
+  const sourceRows = migrateLegacyTabLayout(
+    Array.isArray(layout) ? layout.map(row => (Array.isArray(row) ? [...row] : [])) : []
+  );
   const rows = Array.from({ length: TAB_LAYOUT_ROW_COUNT }, () => []);
   const seenIds = new Set();
 
