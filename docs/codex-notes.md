@@ -10,7 +10,7 @@ This file is the project memory for Codex sessions. Read it first after opening 
 - Do not start or check the local dev server for this project unless the user explicitly asks for it.
 - Before every push, run `npm test`, `npm run lint`, and `npm run build`.
 - Before every push, update `README.md` and the in-app user documentation under the `...` options menu when user-facing behavior changed.
-- Keep `HANDOFF_FOR_CODEX.md` current before every push when setup instructions, working rules, cross-PC continuation notes, or project handoff details changed.
+- Keep `CLAUDE.md` current before every push when setup instructions, working rules, cross-PC continuation notes, or project handoff details changed.
 - Keep this file updated when project rules, current behavior, or future backlog changes.
 - After every implemented change, include a concrete "what to test" checklist in the final answer so the user knows exactly what to verify, and include the production cache-buster URL with the pushed commit hash.
 - If a change requires manual user action outside the repo, especially Supabase SQL, Vercel settings, GitHub settings, or OAuth configuration, call it out explicitly in the final answer under a clear manual-action note and include the exact SQL or steps to run.

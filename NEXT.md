@@ -13,7 +13,7 @@
 - Dependencies are installed and locked in `package-lock.json`
 - `npm run lint` passes
 - `npm run build` passes
-- Detailed Codex handoff exists in `HANDOFF_FOR_CODEX.md`
+- Detailed Codex handoff exists in `CLAUDE.md`
 - Current latest intended commit for production is `3781b88 Trigger Vercel deployment`. It includes the input-length guidance, wider/controlled task-name editors, disabled textarea resize handles, and `vercel.json` no-store cache headers.
 - Local verification for the latest app state passed (`npm test`, `npm run lint`, `npm run build`), and `vercel build --prod` produced the expected newer asset names locally.
 - Production was still serving an older Vercel deployment from commit `24c5bb4` while GitHub reported degraded REST API performance on 2026-07-16/17. Vercel automatic deployments and Vercel CLI deployment creation were affected/stalled. Do not reimplement the UI fixes before checking deployment state.
@@ -34,7 +34,7 @@ When the user says they want to continue working on `task-001`, Codex should:
 2. Run `git status --short` and `git pull --rebase --autostash` before inspecting, changing, or judging existing behavior. GitHub `main` is the source of truth; do not rely on local memory or handoff text alone when deciding whether something is already implemented.
 3. Make the requested app changes.
 4. Run `npm run lint` and `npm run build`.
-5. Before every push, update GitHub-facing documentation (`README.md` when user-facing behavior changes), the in-app user documentation under the `...` options menu, `HANDOFF_FOR_CODEX.md` when handoff instructions change, and `docs/codex-notes.md` when behavior, project rules, or backlog changed.
+5. Before every push, update GitHub-facing documentation (`README.md` when user-facing behavior changes), the in-app user documentation under the `...` options menu, `CLAUDE.md` when handoff instructions change, and `docs/codex-notes.md` when behavior, project rules, or backlog changed.
 6. Commit the changes with a clear message.
 7. Push the commit to GitHub.
 8. In the final answer after implemented changes, always include a concrete checklist of what the user should test.

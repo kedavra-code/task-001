@@ -20,7 +20,7 @@ Product positioning: task-001 focuses on fast operational task triage: capture i
 - Main app shell is `src/App.jsx`; styles are in `src/styles.css`; Subtask normalization and `task_subtasks` row conversion live in `src/subtasks.js`; the configurable three-row overview tab layout lives in `src/TaskScopeTabs.jsx`.
 - `npm run lint` and `npm run build` are the normal verification checks before pushing.
 - User-facing documentation lives in both `README.md` and the in-app `...` -> `Docs` panel.
-- Always update this handoff file (`HANDOFF_FOR_CODEX.md`) when committing project changes.
+- Always update this handoff file (`CLAUDE.md`) when committing project changes.
 - At the start of each task-001 turn, run `git status --short` and `git pull --rebase --autostash` before inspecting or judging existing behavior. GitHub `main` is the source of truth; do not decide that something is missing from an older local checkout.
 - Apply changes identically on every computer: keep existing safety confirmations, popup-close behavior, cache-buster reporting, documentation updates, verification commands, and push flow unless the user explicitly changes the rule.
 - Before every push, run `npm test`, `npm run lint`, and `npm run build`.
@@ -120,7 +120,7 @@ C:\Dev\task-001
   - `README.md`
   - `NEXT.md`
   - `.env.example`
-  - `HANDOFF_FOR_CODEX.md`
+  - `CLAUDE.md`
 
 
 ## Future Architecture Note
