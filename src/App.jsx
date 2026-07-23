@@ -43,25 +43,25 @@ import {
 
 const STORAGE_KEY = "task-sheet.tasks.v1";
 const MASTER_DISPATCHER_STORAGE_KEY = "task-sheet.master-dispatcher.v1";
-const SELECTED_TAG_TABS_STORAGE_KEY = "task-dispatcher.selected-tag-tabs.v1";
-const TAG_CATALOG_STORAGE_KEY = "task-dispatcher.tag-catalog.v1";
-const BROWSER_COMPACT_VIEW_STORAGE_KEY = "task-dispatcher.browser-compact-view.v1";
-const TOOLTIP_ENABLED_STORAGE_KEY = "task-dispatcher.tooltips-enabled.v1";
-const DARK_MODE_STORAGE_KEY = "task-dispatcher.dark-mode.v1";
-const DARK_MODE_BROWSER_STORAGE_KEY = "task-dispatcher.dark-mode-browser.v1";
-const DARK_MODE_MOBILE_STORAGE_KEY = "task-dispatcher.dark-mode-mobile.v1";
-const EDIT_SECTION_DEFAULTS_STORAGE_KEY = "task-dispatcher.edit-section-defaults.v1";
+const SELECTED_TAG_TABS_STORAGE_KEY = "task-001.selected-tag-tabs.v1";
+const TAG_CATALOG_STORAGE_KEY = "task-001.tag-catalog.v1";
+const BROWSER_COMPACT_VIEW_STORAGE_KEY = "task-001.browser-compact-view.v1";
+const TOOLTIP_ENABLED_STORAGE_KEY = "task-001.tooltips-enabled.v1";
+const DARK_MODE_STORAGE_KEY = "task-001.dark-mode.v1";
+const DARK_MODE_BROWSER_STORAGE_KEY = "task-001.dark-mode-browser.v1";
+const DARK_MODE_MOBILE_STORAGE_KEY = "task-001.dark-mode-mobile.v1";
+const EDIT_SECTION_DEFAULTS_STORAGE_KEY = "task-001.edit-section-defaults.v1";
 const EDIT_SECTION_DEFAULTS_VERSION = 5;
-const DUE_TABS_VISIBLE_STORAGE_KEY = "task-dispatcher.due-tabs-visible.v1";
-const TAB_LAYOUT_STORAGE_KEY = "task-dispatcher.tab-layout.v1";
-const CARD_BADGE_COLUMNS_STORAGE_KEY = "task-dispatcher.card-badge-columns.v1";
-const UPCOMING_BADGE_DEFAULTS_STORAGE_KEY = "task-dispatcher.upcoming-badge-defaults.v1";
-const DEFAULT_VIEW_MODE_STORAGE_KEY = "task-dispatcher.default-view-mode.v2";
-const DEFAULT_MOBILE_VIEW_MODE_STORAGE_KEY = "task-dispatcher.default-mobile-view-mode.v1";
-const DEFAULT_START_TAB_STORAGE_KEY = "task-dispatcher.default-start-tab.v1";
-const DEFAULT_MOBILE_START_TAB_STORAGE_KEY = "task-dispatcher.default-mobile-start-tab.v1";
-const KANBAN_COLUMNS_STORAGE_KEY = "task-dispatcher.kanban-columns.v1";
-const SESSION_VIEW_STORAGE_KEY = "task-dispatcher.session-view.v1";
+const DUE_TABS_VISIBLE_STORAGE_KEY = "task-001.due-tabs-visible.v1";
+const TAB_LAYOUT_STORAGE_KEY = "task-001.tab-layout.v1";
+const CARD_BADGE_COLUMNS_STORAGE_KEY = "task-001.card-badge-columns.v1";
+const UPCOMING_BADGE_DEFAULTS_STORAGE_KEY = "task-001.upcoming-badge-defaults.v1";
+const DEFAULT_VIEW_MODE_STORAGE_KEY = "task-001.default-view-mode.v2";
+const DEFAULT_MOBILE_VIEW_MODE_STORAGE_KEY = "task-001.default-mobile-view-mode.v1";
+const DEFAULT_START_TAB_STORAGE_KEY = "task-001.default-start-tab.v1";
+const DEFAULT_MOBILE_START_TAB_STORAGE_KEY = "task-001.default-mobile-start-tab.v1";
+const KANBAN_COLUMNS_STORAGE_KEY = "task-001.kanban-columns.v1";
+const SESSION_VIEW_STORAGE_KEY = "task-001.session-view.v1";
 
 const TASK_ID_PREFIX = "T";
 const MAX_TASK_TAGS = 1;
@@ -3211,7 +3211,7 @@ function downloadFile(filename, type, content) {
 
 function createTaskBackup(tasks) {
   return {
-    format: "task-dispatcher-backup",
+    format: "task-001-backup",
     version: 1,
     exportedAt: new Date().toISOString(),
     tasks: sortTasks(tasks)
@@ -3220,7 +3220,7 @@ function createTaskBackup(tasks) {
 
 function readTasksFromImportPayload(payload) {
   if (Array.isArray(payload)) return payload;
-  if (payload?.format === "task-dispatcher-backup" && Array.isArray(payload.tasks)) return payload.tasks;
+  if (payload?.format === "task-001-backup" && Array.isArray(payload.tasks)) return payload.tasks;
   if (Array.isArray(payload?.tasks)) return payload.tasks;
   return null;
 }
@@ -3469,7 +3469,7 @@ export default function App() {
     if (!isMobileViewport || !isLoaded || !isCurrentUserAllowed) return undefined;
 
     function pushMobileBackGuard() {
-      window.history.pushState({ taskDispatcherMobileGuard: true }, document.title, window.location.href);
+      window.history.pushState({ task001MobileGuard: true }, document.title, window.location.href);
     }
 
     pushMobileBackGuard();
@@ -5181,7 +5181,7 @@ export default function App() {
   }
 
   function exportTasksBackup() {
-    downloadFile("task-dispatcher-backup.json", "application/json", JSON.stringify(createTaskBackup(tasks), null, 2));
+    downloadFile("task-001-backup.json", "application/json", JSON.stringify(createTaskBackup(tasks), null, 2));
   }
 
   function handleExportFormat(format) {
@@ -5873,14 +5873,14 @@ export default function App() {
       <main className="authPage">
         <section className="authPanel">
           <div>
-            <p className="eyebrow">Task Dispatcher</p>
+            <p className="eyebrow">task-001</p>
             <h1>Sign in</h1>
             <p>
               {!session
                 ? "Online storage with Supabase is active. Please sign in with Google."
                 : !isAccessListLoaded
                   ? "Checking access..."
-                  : "This Google account is not allowed for Task Dispatcher yet."}
+                  : "This Google account is not allowed for task-001 yet."}
             </p>
           </div>
 
@@ -5899,7 +5899,7 @@ export default function App() {
       <header className="topbar">
         <div className="topbarTitle">
           <button type="button" className="topbarTitleButton" onClick={showAllOpen} title="Show all active tasks without additional filters">
-            Task Dispatcher
+            task-001
           </button>
           {storageError && <p className="storageStatus storageError">{storageError}</p>}
         </div>
@@ -6634,7 +6634,7 @@ export default function App() {
             <header>
               <div>
                 <p className="eyebrow">User docs</p>
-                <h2 id="user-doc-title">Using Task Dispatcher</h2>
+                <h2 id="user-doc-title">Using task-001</h2>
               </div>
               <button type="button" className="iconButton" onClick={() => setIsUserDocOpen(false)} title="Close docs">
                 <X size={18} />
@@ -6645,7 +6645,7 @@ export default function App() {
               <section>
                 <h3>Purpose</h3>
                 <ul>
-                  <li>Task Dispatcher is built for fast operational task triage: capture work, classify it, decide what is important, urgent, unclear, self-owned, or delegable, and keep it visible until it is started or done.</li>
+                  <li>task-001 is built for fast operational task triage: capture work, classify it, decide what is important, urgent, unclear, self-owned, or delegable, and keep it visible until it is started or done.</li>
                   <li>The app is aimed at individuals and small operational teams that need lightweight action steering. It is intentionally focused on categorizing, prioritizing, dispatching, following up, and reviewing tasks.</li>
                 </ul>
               </section>

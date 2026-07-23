@@ -32,7 +32,7 @@ Beide pruefen `public.allowed_users` plus den festen Admin `miro@pixelina.me`.
 
 - Login mit `miro@pixelina.me`: muss funktionieren.
 - Login mit einem in `...` -> `Benutzer` freigegebenen Account: muss funktionieren.
-- Signup/Login mit nicht freigegebenem Account: muss mit `Dieser Account ist fuer Task Dispatcher nicht freigegeben.` blockiert werden.
+- Signup/Login mit nicht freigegebenem Account: muss mit `Dieser Account ist fuer task-001 nicht freigegeben.` blockiert werden.
 
 ## Hinweis
 

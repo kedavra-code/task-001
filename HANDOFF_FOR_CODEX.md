@@ -8,7 +8,7 @@ The user wants to build a React web app for task dispatching.
 
 The app is now an active Vite React task-dispatching app with Supabase-backed persistence and Google login. Continue from GitHub `main`, keep changes small, and follow the working rules in `NEXT.md`.
 
-Product positioning: Task Dispatcher focuses on fast operational task triage: capture incoming work, decide what is important, urgent, still unclear, self-owned, or delegable, and keep it visible until it is started or done. It is for individuals and small operational teams that need lightweight action steering rather than a broad project or collaboration suite. Collaboration happens in other tools; this app stays deliberately narrow: categorize, prioritize, dispatch, and follow up.
+Product positioning: task-001 focuses on fast operational task triage: capture incoming work, decide what is important, urgent, still unclear, self-owned, or delegable, and keep it visible until it is started or done. It is for individuals and small operational teams that need lightweight action steering rather than a broad project or collaboration suite. Collaboration happens in other tools; this app stays deliberately narrow: categorize, prioritize, dispatch, and follow up.
 
 ## Current Status
 
@@ -21,7 +21,7 @@ Product positioning: Task Dispatcher focuses on fast operational task triage: ca
 - `npm run lint` and `npm run build` are the normal verification checks before pushing.
 - User-facing documentation lives in both `README.md` and the in-app `...` -> `Docs` panel.
 - Always update this handoff file (`HANDOFF_FOR_CODEX.md`) when committing project changes.
-- At the start of each task-dispatcher turn, run `git status --short` and `git pull --rebase --autostash` before inspecting or judging existing behavior. GitHub `main` is the source of truth; do not decide that something is missing from an older local checkout.
+- At the start of each task-001 turn, run `git status --short` and `git pull --rebase --autostash` before inspecting or judging existing behavior. GitHub `main` is the source of truth; do not decide that something is missing from an older local checkout.
 - Apply changes identically on every computer: keep existing safety confirmations, popup-close behavior, cache-buster reporting, documentation updates, verification commands, and push flow unless the user explicitly changes the rule.
 - Before every push, run `npm test`, `npm run lint`, and `npm run build`.
 - After implementing changes, always tell the user exactly what they should test in the final answer and include the production cache-buster URL with the pushed commit hash.
@@ -57,7 +57,7 @@ Product positioning: Task Dispatcher focuses on fast operational task triage: ca
 - In the browser table, dropdown-like data cells stay calm in read mode and turn into compact controls on hover/focus. Changing `Assignee`, `Action`, `Status`, `Start date`, or `Due` applies directly to the task; `Action` is editable only for assignees other than the Master Dispatcher. `When` and `Prio` are derived displays. Text, description, subtask, and dependency cells still open the focused row editor or popup when clicked.
 - Dependency labels now use `Blockiert durch` / `Blockiert`, and dependency cycles are rejected when capturing or saving tasks.
 - Status values are `Open`, `Started`, and `Done`; `Open` and `Started` are the second tab level under `All` or an active tag scope, while `Done` is opened from the `...` menu like `Deleted`. Completing a task stores `completed_at`, shown as `Done on` only in the `Done` menu view; compact cards show `done on [date]`. The done view is sorted newest first by default, with search and manual ascending/descending sort.
-- Tags are managed separately in the `...` options menu under `Tags`; the catalog is stored in `user_settings.available_tags`, limited to 10 entries, shows the current count such as `3 of 10`, and remains available until deleted. Existing tags can be renamed with the pencil icon and saved with the disk icon; renaming updates task assignments, selected tag tabs, drafts, and the active scope. Tasks can have one catalog tag, stored in Supabase `tasks.tags`, and assigned while capturing/editing on mobile and desktop through a compact selection popup. Selecting another tag replaces the previous one, `No tag` removes it, and empty tag fields show `-` and open the same popup. Assigning a tag automatically activates the matching tag tab. Deleting a catalog tag removes it from task assignments and selected tag tabs. Existing tags can also be selected/deselected as synced `Tag-Tabs` in the same `...` -> `Tags` dialog; the selection and order are stored in `user_settings.selected_tag_tabs` and apply on mobile and desktop. The overview has three configurable tab rows. Default is row 1 `All` followed by active tag tabs; row 2 `Newest`, `Open`, `Started`; row 3 empty. Any visible tab can be moved across the three rows by drag-and-drop; drag-and-drop surfaces use an open-hand cursor on hover and a closed-hand cursor while dragging; `...` -> `Reset tabs` restores the default. The custom layout is stored locally and in `user_settings.tab_layout` when the Supabase column exists; missing/stale tag ids are ignored and newly active tags are inserted into the default tag row. The optional due row `Start reached`, `Overdue` is hidden by default and can be toggled in the `...` options menu. Normal task views use the standard task order: `When` (`clarify`, `now`, `later`, `someday`), then `Prio` (`prioritize`, `P1`, `P2`, `P3`), then due date, then task title, unless a column sort is active. `All` plus all non-tag status/due tabs have explanatory tooltips, `Open`, `Newest`, and `Overdue` explain which tasks they include, the `Overdue` tooltip says open or started tasks/subtasks whose `Due` date has been reached, while tag tabs do not get extra explanatory tooltips. Other active status tabs can still be clicked again to show all active non-done/non-deleted tasks in scope, and clicking an active due tab clears that due filter. `Newest` shows active, not-done tasks in the active scope with the newest effective creation timestamp first. If old tasks have no `created_at`, their start date is used; tasks with neither value sort after dated tasks. `Done` and `Deleted` are reached through the `...` menu and apply to the active scope. Deleted tasks remain editable during retention. Capture is opened through the header plus icon instead of a tab; fresh browser and phone starts always use the `All` tab, and clicking/touching `Task Dispatcher` jumps to neutral `All`.
+- Tags are managed separately in the `...` options menu under `Tags`; the catalog is stored in `user_settings.available_tags`, limited to 10 entries, shows the current count such as `3 of 10`, and remains available until deleted. Existing tags can be renamed with the pencil icon and saved with the disk icon; renaming updates task assignments, selected tag tabs, drafts, and the active scope. Tasks can have one catalog tag, stored in Supabase `tasks.tags`, and assigned while capturing/editing on mobile and desktop through a compact selection popup. Selecting another tag replaces the previous one, `No tag` removes it, and empty tag fields show `-` and open the same popup. Assigning a tag automatically activates the matching tag tab. Deleting a catalog tag removes it from task assignments and selected tag tabs. Existing tags can also be selected/deselected as synced `Tag-Tabs` in the same `...` -> `Tags` dialog; the selection and order are stored in `user_settings.selected_tag_tabs` and apply on mobile and desktop. The overview has three configurable tab rows. Default is row 1 `All` followed by active tag tabs; row 2 `Newest`, `Open`, `Started`; row 3 empty. Any visible tab can be moved across the three rows by drag-and-drop; drag-and-drop surfaces use an open-hand cursor on hover and a closed-hand cursor while dragging; `...` -> `Reset tabs` restores the default. The custom layout is stored locally and in `user_settings.tab_layout` when the Supabase column exists; missing/stale tag ids are ignored and newly active tags are inserted into the default tag row. The optional due row `Start reached`, `Overdue` is hidden by default and can be toggled in the `...` options menu. Normal task views use the standard task order: `When` (`clarify`, `now`, `later`, `someday`), then `Prio` (`prioritize`, `P1`, `P2`, `P3`), then due date, then task title, unless a column sort is active. `All` plus all non-tag status/due tabs have explanatory tooltips, `Open`, `Newest`, and `Overdue` explain which tasks they include, the `Overdue` tooltip says open or started tasks/subtasks whose `Due` date has been reached, while tag tabs do not get extra explanatory tooltips. Other active status tabs can still be clicked again to show all active non-done/non-deleted tasks in scope, and clicking an active due tab clears that due filter. `Newest` shows active, not-done tasks in the active scope with the newest effective creation timestamp first. If old tasks have no `created_at`, their start date is used; tasks with neither value sort after dated tasks. `Done` and `Deleted` are reached through the `...` menu and apply to the active scope. Deleted tasks remain editable during retention. Capture is opened through the header plus icon instead of a tab; fresh browser and phone starts always use the `All` tab, and clicking/touching `task-001` jumps to neutral `All`.
 - Top-level tabs show compact counters for `All` and each selected tag tab, counting only active `Open` plus `Started` tasks. Done/deleted totals are shown only in the scoped `Done` and `Deleted` entries in the `...` menu.
 - Browser Kanban columns use flexible tracks with a slimmer non-squeezing minimum instead of fixed 493px columns. This keeps the 145px badge cells intact while making the four default columns fit better on high-resolution displays before horizontal scrolling is needed. Phone Kanban remains horizontally scrolling with fixed 3-column badge cards.
 - Browser compact cards and Kanban badge grids are fixed to their calculated width. Browser card width is derived from the exact badge-grid width plus card padding/border plus a small safety reserve and must not grow or shrink while resizing desktop windows; browser edit cards also keep a content-based minimum width for the parameter section, text editors, and colored dividers so edit controls never protrude beyond the card background without forcing unnecessarily wide cards when few badge columns are active. Kanban columns use fixed tracks, not flexible `1fr` tracks, and the board supports horizontal mouse drag scrolling in addition to the scrollbar only when horizontal overflow exists; the open/closed hand cursor is shown only in that overflow state. The visible Kanban scrollbar sits above the board directly below search; the lower board scrollbar is visually hidden while wheel/touch/drag scrolling remains available when applicable. Keep those values together so badges stay inside the card when horizontal scrolling appears; do not reduce the safety reserve back to the exact padding/border value. Touch/phone layouts keep responsive 100% cards through pointer-coarse media overrides. If the browser window is narrower than the active card/column width, the list or board must scroll horizontally; badges and right-side icons should not overlap, be squeezed, or overflow beyond the card edge. Resizing between desktop and mobile breakpoints must not reapply the persistent default view or switch the current session from list to Kanban. Kanban is overview-only: card clicks call the normal single-task edit view outside the board, with the prior Kanban view stored in the edit return snapshot and restored on close/completion/deletion.
@@ -78,13 +78,13 @@ Product positioning: Task Dispatcher focuses on fast operational task triage: ca
 ## GitHub Repository
 
 ```text
-git@github.com:Tremetor/task-dispatcher.git
+git@github.com:kedavra-code/task-001.git
 ```
 
 Expected local path on each Windows computer:
 
 ```text
-C:\Dev\task-dispatcher
+C:\Dev\task-001
 ```
 
 ## What Was Done on the Home Computer
@@ -113,7 +113,7 @@ kedavra-code
 - Repository was cloned to:
 
 ```text
-C:\Dev\task-dispatcher
+C:\Dev\task-001
 ```
 
 - Initial handoff/project files were added and pushed:
@@ -133,7 +133,7 @@ C:\Dev\task-dispatcher
 First inspect whether the office computer already has the repo:
 
 ```powershell
-Test-Path C:\Dev\task-dispatcher
+Test-Path C:\Dev\task-001
 ```
 
 If the repo does not exist yet:
@@ -141,14 +141,14 @@ If the repo does not exist yet:
 ```powershell
 mkdir C:\Dev
 cd C:\Dev
-git clone git@github.com:Tremetor/task-dispatcher.git C:\Dev\task-dispatcher
-cd C:\Dev\task-dispatcher
+git clone git@github.com:kedavra-code/task-001.git C:\Dev\task-001
+cd C:\Dev\task-001
 ```
 
 If the repo already exists:
 
 ```powershell
-cd C:\Dev\task-dispatcher
+cd C:\Dev\task-001
 git pull
 ```
 
@@ -175,7 +175,7 @@ ssh -o StrictHostKeyChecking=accept-new -T git@github.com
 Expected success:
 
 ```text
-Hi Tremetor! You've successfully authenticated, but GitHub does not provide shell access.
+Hi kedavra-code! You've successfully authenticated, but GitHub does not provide shell access.
 ```
 
 ## Next Project Step
@@ -186,7 +186,7 @@ Immediate next step after this handoff:
 - Production was stuck on Vercel commit `24c5bb4 Add input length guidance`, while the intended latest commit is `3781b88 Trigger Vercel deployment`.
 - Do not rebuild the same input-sizing/textarea fixes before verifying deployment state. The local code already contains those changes and local verification passed.
 - Expected production cache-buster for the current state: `https://task-dispatcher.vercel.app/?v=3781b88`.
-- If Vercel still does not deploy `3781b88` or newer, repair the GitHub/Vercel deployment path first: Vercel project `task-dispatcher` -> Settings -> Git -> confirm repository `Tremetor/task-dispatcher`, branch `main`, and reconnect/reauthorize the GitHub integration if needed.
+- If Vercel still does not deploy `3781b88` or newer, repair the GitHub/Vercel deployment path first: Vercel project `task-dispatcher` -> Settings -> Git -> confirm repository `kedavra-code/task-001`, branch `main`, and reconnect/reauthorize the GitHub integration if needed.
 
 Then continue UI and workflow improvements in small tested increments. Before pushing:
 

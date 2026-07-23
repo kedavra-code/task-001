@@ -1,9 +1,9 @@
-# Task Sheet / Task Dispatcher
+# Task Sheet / task-001
 
 React web app for dispatching, tracking, and coordinating tasks. The current
 app was migrated from the existing local `task-sheet` React app.
 
-Task Dispatcher focuses on fast operational task triage: capture incoming work, decide what is important, urgent, still unclear, self-owned, or delegable, and keep it visible until it is started or done. It is aimed at individuals and small operational teams that need lightweight action steering rather than a broad project or collaboration suite. Collaboration happens in other tools; this app stays deliberately narrow: categorize, prioritize, dispatch, and follow up.
+task-001 focuses on fast operational task triage: capture incoming work, decide what is important, urgent, still unclear, self-owned, or delegable, and keep it visible until it is started or done. It is aimed at individuals and small operational teams that need lightweight action steering rather than a broad project or collaboration suite. Collaboration happens in other tools; this app stays deliberately narrow: categorize, prioritize, dispatch, and follow up.
 
 ## Current Status
 
@@ -76,7 +76,7 @@ Header icons:
 
 - Plus icon: opens task capture. Capture is no longer a tab.
 - Kanban/List icon: toggles the task overview between the standard list view and a Kanban board for the current session only. Persistent browser/phone defaults are changed only in the `...` options menu.
-- The `Task Dispatcher` title jumps back to neutral `All` without additional status or due filters.
+- The `task-001` title jumps back to neutral `All` without additional status or due filters.
 - On phones, the device/browser back button is intercepted while the app is active and returns to `All / Open` when the browser exposes it as history navigation. The app also registers a best-effort native browser warning before the page/app is closed; Android/Chrome decides whether that warning is shown and controls its text.
 - On phones, the title is intentionally shorter so the header icons remain visible.
 - Icon order is always: edit, share, delete, completion. Adjacent action icons use the same visual size throughout the UI and are aligned to the right side of the card header, including edit mode. The old Details icon is replaced by a collapsible `Additional details` label below the badges. That label appears only in Maximum detail mode when the task has a description, subtasks, or comments, and it opens the labeled detail panels. Predecessors and successors no longer use separate arrow icons; they stay as labeled clickable relation text in the card details. An upcoming task shows a small red `!` marker directly left of the task ID in overview and edit mode. Its tooltip lists the concrete reasons such as `clarify`, `Start reached`, `due today`, or subtask reminders, including on touch devices. If a task title wraps to multiple lines, the `!` marker and task ID stay aligned with the first title line. The task ID is clickable only in overview cards/rows to locally toggle that card into the same Maximum view with `Additional details` expanded; clicking it again collapses the details, and clicking another task ID collapses the previous task before locally opening the new one without changing the global view mode, and only the currently open card renders detail content. In edit mode it is display-only. Editing starts from the pencil icon. In mobile edit mode, the edited card header uses the same width as the colored edit-section dividers; the optional `!` marker and task number stay left, and action icons are anchored to the right edge of the card.
@@ -505,7 +505,7 @@ The repository includes `vercel.json` with `Cache-Control: no-store` so the task
 Start of a session:
 
 ```powershell
-cd C:\Dev\task-dispatcher
+cd C:\Dev\task-001
 git pull
 git status
 ```
