@@ -226,8 +226,8 @@ const STATUS_FILTER_BY_TAB = {
   open: "Offen",
   started: "Gestartet"
 };
-const TAB_LAYOUT_ROW_COUNT = 3;
-const STATIC_TAB_IDS = ["all", "newest", "open", "started"];
+const TAB_LAYOUT_ROW_COUNT = 2;
+const STATIC_TAB_IDS = ["all"];
 const DUE_STATUS_OPTIONS = ["Alle", "heute starten", "heute fällig", "überfällig", "geplant", "ohne Fälligkeit"];
 const CRITERIA_PLACEHOLDER = "...";
 const HANDLUNGSDRUCK_OPTIONS = ["hoch", "mittel", "niedrig"];
@@ -1250,15 +1250,14 @@ function getTagFromTabId(id) {
 function getDefaultTabLayout(tags = []) {
   return [
     ["all"],
-    normalizeTags(tags, 0).map(getTagTabId),
-    ["newest", "open", "started"]
+    normalizeTags(tags, 0).map(getTagTabId)
   ];
 }
 
 function migrateLegacyTabLayout(rows) {
-  const [row0 = [], row1 = [], row2 = []] = rows;
+  const [row0 = []] = rows;
   if (row0[0] !== "all" || row0.length <= 1) return rows;
-  return [["all"], row0.slice(1), [...row1, ...row2]];
+  return [["all"], row0.slice(1)];
 }
 
 function normalizeTabLayout(layout, tags = []) {
@@ -5442,7 +5441,7 @@ export default function App() {
           />
           <span>Show due tabs</span>
         </label>
-        <button type="button" className="secondaryButton menuResetTabsButton" onClick={resetTabLayout} title="Resets tab layout to All/tags, Newest/Open/Started.">
+        <button type="button" className="secondaryButton menuResetTabsButton" onClick={resetTabLayout} title="Resets tab layout to All, then tags.">
           Reset tabs
         </button>
         <span className="menuGroupTitle">Layout</span>
@@ -6663,7 +6662,7 @@ export default function App() {
                 <ul>
                   <li>The top title resets the session to All without status, due, tag, or column filters. Current view, scope, mode, and search are shown in the info line below the tabs; the filter icon shows the active filter/sort count and lists them on hover. Done and Deleted count as view filters and can be left with Reset filters.</li>
                   <li>All is the primary tab. Tasks that need immediate attention, such as clarification, reached start dates, due-today work, overdue work, and matching subtask reminders, are marked directly on the task with a red exclamation mark and can also be shown as the optional Start reached and Overdue due tabs.</li>
-                  <li>All and tag tabs share the tag row, with All first by default. Newest, Open, and Started are status views; Done, Deleted, Review, and Close-out are available from Options.</li>
+                  <li>All has its own row above the tag row. Open and Started can still be reached from the header filter's Status dropdown; Done, Deleted, Review, and Close-out are available from Options.</li>
                   <li>The search field is session-only and searches across all active tasks regardless of the currently selected tab or filters. In Done, it searches done tasks only; in Deleted, it searches deleted tasks only.</li>
                 </ul>
               </section>
@@ -6674,7 +6673,7 @@ export default function App() {
                   <li>The header view icon switches the current session between List and Kanban. That toggle is temporary; persistent defaults are changed only in Options.</li>
                   <li>Browser and phone can have separate default view modes and separate edit-section defaults. Edit sections default to expanded on both devices and are stored in user settings when the Supabase columns exist, with local storage as fallback.</li>
                   <li>Task details can be switched with the header icon for the current view. Options set only the default for fresh sessions: Minimum hides parameter badges and card content, including the Additional details label. Maximum shows parameter badges; cards with a description, subtasks, or comments then show a collapsible Additional details label below the badges, and opening it reveals the labeled content panels.</li>
-                  <li>Kanban groups active tasks into the enabled columns Clarify, Delegate, Open, and Started. Open, Started, and Newest tabs are hidden while Kanban is active because those states are represented by board columns.</li>
+                  <li>Kanban groups active tasks into the enabled columns Clarify, Delegate, Open, and Started.</li>
                   <li>On phones, Kanban scrolls horizontally by column, shows edge hints when more columns are available, and snaps to the next column while scrolling.</li>
                 </ul>
               </section>

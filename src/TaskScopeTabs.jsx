@@ -18,8 +18,6 @@ export default function TaskScopeTabs({
   isKanbanView = false
 }) {
   function getTabConfig(id) {
-    if (isKanbanView && ["newest", "open", "started"].includes(id)) return null;
-
     if (id === "all") {
       return {
         label: "All",
@@ -75,7 +73,7 @@ export default function TaskScopeTabs({
   }
 
   function getRowClassName(rowIndex) {
-    return ["primaryScopeTabs", "tagScopeTabs", "statusTabs"][rowIndex] || "scopeTabs";
+    return ["primaryScopeTabs", "tagScopeTabs"][rowIndex] || "scopeTabs";
   }
 
   return (

@@ -646,11 +646,6 @@ main {
   margin-top: -10px;
 }
 
-.statusTabs {
-  justify-self: start;
-  margin-top: -6px;
-}
-
 .dueTabs {
   justify-self: start;
   margin-top: -4px;
