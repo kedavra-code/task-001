@@ -30,7 +30,7 @@ Codex sessions should read `docs/codex-notes.md` first when continuing work, esp
 - **GitHub**: source of truth for the repository.
 - **Supabase**: database, Row Level Security, and Google Auth session handling.
 - **Google Cloud / Google Auth Platform**: OAuth client for Google login.
-- **Vercel**: production hosting at `https://task-dispatcher.vercel.app/`.
+- **Vercel**: production hosting at `https://task-001-sepia.vercel.app/`.
 
 ## Features
 
@@ -84,7 +84,7 @@ Header icons:
 - `↓`: danach erfolgt. Tapping it jumps to the successor task.
 - `↕`: both preceding and following tasks exist. Tapping it opens the target picker when several related tasks exist.
 - Text-page icon: shown when a task has a description, comments, or subtasks. Tapping it opens the content area with description, subtasks, and comments; tapping again or tapping elsewhere closes it. Scrolling keeps the content area open.
-- Share icon: copies a compact task summary and direct task URL such as `https://task-dispatcher.vercel.app/?task-id=T-123` to the clipboard and opens the device share sheet when available. Opening such a link after login opens the task in the normal Maximum detail view for the matching user's task list; use the pencil icon to edit it. Some share targets such as Microsoft Teams may open the chosen chat without accepting the shared text; in that case the copied task summary can be pasted directly into the chat field.
+- Share icon: copies a compact task summary and direct task URL such as `https://task-001-sepia.vercel.app/?task-id=T-123` to the clipboard and opens the device share sheet when available. Opening such a link after login opens the task in the normal Maximum detail view for the matching user's task list; use the pencil icon to edit it. Some share targets such as Microsoft Teams may open the chosen chat without accepting the shared text; in that case the copied task summary can be pasted directly into the chat field.
 - Trash icon: deletes the task after confirmation. Check icon: toggles completion. On mobile, marking a task as done first opens `Complete? Yes No`; tapping the icon again, scrolling, or tapping elsewhere closes the prompt.
 
 The predecessor/successor icons do not require extra data fields. They are derived from the existing internal dependency relationship: a task with a predecessor points to the task that must happen before, and a task referenced by other tasks has successors.
@@ -458,8 +458,8 @@ Authentication -> Providers -> Google
 Supabase URL configuration should include:
 
 ```text
-Site URL: https://task-dispatcher.vercel.app
-Redirect URL: https://task-dispatcher.vercel.app
+Site URL: https://task-001-sepia.vercel.app
+Redirect URL: https://task-001-sepia.vercel.app
 ```
 
 For local testing, also allow:
@@ -477,7 +477,7 @@ Google Cloud OAuth client:
 - Authorized JavaScript origins:
   - `http://127.0.0.1:5180`
   - `http://localhost:5180`
-  - `https://task-dispatcher.vercel.app`
+  - `https://task-001-sepia.vercel.app`
 - Authorized redirect URI:
   - `https://izvmyvpxbmitajgopgar.supabase.co/auth/v1/callback`
 

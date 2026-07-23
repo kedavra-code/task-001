@@ -185,7 +185,7 @@ Immediate next step after this handoff:
 - Check whether GitHub/Vercel recovered from the 2026-07-16/17 GitHub REST API degradation.
 - Production was stuck on Vercel commit `24c5bb4 Add input length guidance`, while the intended latest commit is `3781b88 Trigger Vercel deployment`.
 - Do not rebuild the same input-sizing/textarea fixes before verifying deployment state. The local code already contains those changes and local verification passed.
-- Expected production cache-buster for the current state: `https://task-dispatcher.vercel.app/?v=3781b88`.
+- Expected production cache-buster for the current state: `https://task-001-sepia.vercel.app/?v=3781b88`.
 - If Vercel still does not deploy `3781b88` or newer, repair the GitHub/Vercel deployment path first: Vercel project `task-dispatcher` -> Settings -> Git -> confirm repository `kedavra-code/task-001`, branch `main`, and reconnect/reauthorize the GitHub integration if needed.
 
 Then continue UI and workflow improvements in small tested increments. Before pushing:

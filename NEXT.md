@@ -7,7 +7,7 @@
 - The old `task-sheet` UI and logic were migrated into this repo
 - React app scaffold exists with Vite, React, and TypeScript
 - Current app shell is `src\App.jsx`, imported by the TypeScript entrypoint; Subtask normalization/table conversion lives in `src\subtasks.js`, and top-level scope tabs live in `src\TaskScopeTabs.jsx`.
-- Online version is deployed with Vercel at `https://task-dispatcher.vercel.app/`
+- Online version is deployed with Vercel at `https://task-001-sepia.vercel.app/`
 - Supabase stores tasks and handles auth; Google OAuth is configured
 - Supabase schema updates through Auth Hooks, `task_subtasks`, last view, and column filters were executed by the user; Auth Hooks were enabled and tested on 2026-06-04
 - Dependencies are installed and locked in `package-lock.json`
@@ -43,7 +43,7 @@ Do not start or check the local dev server as part of the normal verification fl
 
 When a change requires manual action by the user outside the repo, especially Supabase SQL, Vercel/GitHub settings, or OAuth configuration, call it out clearly in the final answer as a separate manual-action note and include the exact SQL or concrete steps.
 
-If production does not reflect pushed commits, inspect Vercel before coding: the expected cache-buster for the current handoff is `https://task-dispatcher.vercel.app/?v=3781b88`. Vercel must show commit `3781b88` or newer; if it still shows `24c5bb4`, the deployment integration is stale or delayed.
+If production does not reflect pushed commits, inspect Vercel before coding: the expected cache-buster for the current handoff is `https://task-001-sepia.vercel.app/?v=3781b88`. Vercel must show commit `3781b88` or newer; if it still shows `24c5bb4`, the deployment integration is stale or delayed.
 
 ## Product Idea
 
