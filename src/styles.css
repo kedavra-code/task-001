@@ -501,55 +501,6 @@ button {
   }
 }
 
-.filterMenu {
-  right: auto;
-  left: 0;
-  display: grid;
-  grid-template-columns: repeat(3, minmax(180px, 1fr));
-  justify-content: stretch;
-  text-transform: none;
-  width: min(720px, calc(100vw - 32px));
-}
-
-.filterMenu label {
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: end;
-}
-
-.filterMenu label > span {
-  grid-column: 1 / -1;
-}
-
-.filterMenu label > input,
-.filterMenu label > select,
-.filterMenu label > .comboBox,
-.filterMenu .filterSortControls {
-  min-width: 0;
-}
-
-.filterMenu label > .sortToggle {
-  align-self: stretch;
-}
-
-.filterSortField {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-}
-
-.filterSortControls {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 6px;
-}
-
-.filterMenu .secondaryButton {
-  grid-column: 1 / -1;
-}
-
-.filterMenu .tagTabsField {
-  grid-column: 1 / -1;
-}
-
 .tagManagerMenu {
   display: grid;
   grid-template-columns: minmax(220px, 1fr);
@@ -951,7 +902,6 @@ select {
 }
 
 select,
-.comboBox input,
 .tagSelectTrigger,
 .actionSelect {
   font-family: inherit;
@@ -997,85 +947,6 @@ input:read-only {
   margin-top: 2px;
 }
 
-.comboBox {
-  position: relative;
-  min-width: 180px;
-  max-width: 100%;
-}
-
-.comboBox input {
-  width: 100%;
-  min-width: 0;
-  max-width: none;
-  padding-right: 46px;
-}
-
-.comboArrow {
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  display: grid;
-  width: 44px;
-  min-height: 0;
-  place-items: center;
-  padding: 0;
-  border: 0;
-  border-left: 1px solid transparent;
-  border-radius: 0 6px 6px 0;
-  background: transparent;
-  touch-action: manipulation;
-}
-
-.comboArrow::before {
-  width: 0;
-  height: 0;
-  border-color: #61707f transparent transparent;
-  border-style: solid;
-  border-width: 6px 5px 0;
-  content: "";
-}
-
-.comboArrow:hover,
-.comboArrow:focus-visible {
-  border-left-color: #dce1e7;
-  background: #eef4ff;
-}
-
-.comboArrow:focus-visible {
-  outline: 2px solid #1f6feb;
-  outline-offset: -2px;
-}
-
-.comboMenu {
-  position: absolute;
-  right: 0;
-  left: 0;
-  z-index: 5;
-  max-height: 190px;
-  overflow: auto;
-  margin-top: 4px;
-  border: 1px solid #cfd7df;
-  border-radius: 6px;
-  background: #ffffff;
-  padding-top: 36px;
-  box-shadow: 0 12px 28px rgba(23, 32, 42, 0.16);
-}
-
-.comboMenu button {
-  display: block;
-  width: 100%;
-  border: 0;
-  background: transparent;
-  color: #17202a;
-  padding: 9px 10px;
-  text-align: left;
-}
-
-.comboMenu button:hover {
-  background: #eef4ff;
-}
-
 .primaryButton,
 .secondaryButton,
 .iconButton {
@@ -1112,27 +983,6 @@ input:read-only {
 .iconButton {
   width: 38px;
   height: 38px;
-}
-
-.filterIconButton {
-  position: relative;
-}
-
-.iconBadgeCount {
-  position: absolute;
-  top: -5px;
-  right: -5px;
-  min-width: 17px;
-  height: 17px;
-  padding: 0 5px;
-  border: 1px solid #17202a;
-  border-radius: 999px;
-  background: #17202a;
-  color: #ffffff;
-  font-size: 10px;
-  font-weight: 800;
-  line-height: 15px;
-  text-align: center;
 }
 
 .iconButton svg {
@@ -1959,11 +1809,6 @@ input:read-only {
   font-size: 13px;
 }
 
-.browserCompactTaskList .mobileEditGrid .comboBox {
-  width: 100%;
-  min-width: 0;
-}
-
 .browserCompactTaskList .mobileEditFull {
   grid-column: auto;
 }
@@ -2073,8 +1918,7 @@ input:read-only {
   .browserCompactTaskList .mobileEditGrid label,
   .browserCompactTaskList .mobileEditGrid input,
   .browserCompactTaskList .mobileEditGrid select,
-  .browserCompactTaskList .mobileEditGrid textarea,
-  .browserCompactTaskList .mobileEditGrid .comboBox {
+  .browserCompactTaskList .mobileEditGrid textarea {
     width: 100%;
     max-width: none;
   }
@@ -2084,30 +1928,6 @@ input:read-only {
     width: 100%;
     max-width: none;
   }
-}
-
-.sortToggle {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  min-width: 32px;
-  height: 32px;
-  border: 1px solid #cfd7df;
-  border-radius: 6px;
-  background: #ffffff;
-  color: #3a434d;
-  padding: 0;
-}
-
-.sortToggle.active {
-  border-color: #1f6feb;
-  background: #eef4ff;
-  color: #1f6feb;
-}
-
-.sortToggle:hover {
-  border-color: #9aa8b6;
 }
 
 .doneRow {
@@ -2338,8 +2158,7 @@ input:read-only {
   font-weight: 700;
 }
 
-.actionsMenu .popupCloseButton,
-.comboMenu .popupCloseButton {
+.actionsMenu .popupCloseButton {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -3207,12 +3026,6 @@ input:read-only {
     width: 100%;
   }
 
-  .filterMenu {
-    right: 0;
-    left: auto;
-    grid-template-columns: 1fr;
-  }
-
   .actionsMenu .secondaryButton,
   .actionsMenu .actionSelect {
     flex: 1 1 calc(50% - 8px);
@@ -3554,10 +3367,6 @@ input:read-only {
     font-size: 13px;
   }
 
-  .mobileEditGrid .comboBox {
-    min-width: 0;
-  }
-
   .mobileEditGrid > * {
     grid-column: 1 / -1;
   }
@@ -3646,7 +3455,6 @@ input:read-only {
 [data-theme="dark"] input,
 [data-theme="dark"] select,
 [data-theme="dark"] textarea,
-[data-theme="dark"] .comboBox,
 [data-theme="dark"] .menuCheckbox,
 [data-theme="dark"] .tagChoice,
 [data-theme="dark"] .subtaskItem,
@@ -3827,12 +3635,6 @@ input:read-only {
   color: #c9d1d9;
 }
 
-[data-theme="dark"] .iconBadgeCount {
-  border-color: #e6edf3;
-  background: #e6edf3;
-  color: #202a34;
-}
-
 [data-theme="dark"] .topbarTitleButton,
 [data-theme="dark"] .taskIdButton,
 [data-theme="dark"] .taskIdStatic {
@@ -3910,10 +3712,7 @@ input:read-only {
 }
 
 [data-theme="dark"] .confirmModal,
-[data-theme="dark"] .filterMenu,
-[data-theme="dark"] .comboMenu,
 [data-theme="dark"] .descriptionPreviewPopup,
-[data-theme="dark"] .comboMenu button,
 [data-theme="dark"] .tagCatalogItem,
 [data-theme="dark"] .tagPill,
 [data-theme="dark"] .userAccessItem {
@@ -3922,19 +3721,10 @@ input:read-only {
   color: #e6edf3;
 }
 
-[data-theme="dark"] .comboMenu button:hover,
 [data-theme="dark"] .tagChoice:hover,
-[data-theme="dark"] .tagSelectTrigger:hover,
-[data-theme="dark"] .comboArrow:hover,
-[data-theme="dark"] .comboArrow:focus-visible {
+[data-theme="dark"] .tagSelectTrigger:hover {
   border-color: #6ba3ff;
   background: #293645;
-  color: #e6edf3;
-}
-
-[data-theme="dark"] .comboArrow {
-  border-left-color: #465563;
-  background: #111820;
   color: #e6edf3;
 }
 

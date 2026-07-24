@@ -1,8 +1,5 @@
 import { Fragment, forwardRef, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
-  ArrowDown,
-  ArrowUp,
-  ArrowUpDown,
   Check,
   Columns3,
   List,
@@ -12,10 +9,8 @@ import {
   Pencil,
   Plus,
   Redo2,
-  RotateCcw,
   Search,
   Share2,
-  SlidersHorizontal,
   Undo2,
   Trash2,
   X
@@ -2445,41 +2440,6 @@ function DisketteIcon({ size = 16 }) {
   );
 }
 
-function SortToggle({ value, onChange, ariaLabel = "Sorting" }) {
-  const Icon = value === "Aufsteigend" ? ArrowUp : value === "Absteigend" ? ArrowDown : ArrowUpDown;
-  const nextValue = value === "Standard" ? "Aufsteigend" : value === "Aufsteigend" ? "Absteigend" : "Standard";
-  const title =
-    value === "Aufsteigend"
-      ? `${ariaLabel}: aufsteigend`
-      : value === "Absteigend"
-        ? `${ariaLabel}: absteigend`
-        : `${ariaLabel}: Standard`;
-
-  return (
-    <button
-      type="button"
-      className={`sortToggle ${value !== "Standard" ? "active" : ""}`}
-      onClick={() => onChange(nextValue)}
-      aria-label={title}
-      title={title}
-    >
-      <Icon size={16} aria-hidden="true" />
-    </button>
-  );
-}
-
-function FilterSortField({ label, sortValue, onSortChange, sortAriaLabel, children }) {
-  return (
-    <label className="filterSortField">
-      <span>{label}</span>
-      <div className="filterSortControls">
-        {children}
-        <SortToggle value={sortValue} onChange={onSortChange} ariaLabel={sortAriaLabel || `Sort ${label}`} />
-      </div>
-    </label>
-  );
-}
-
 function LocalUnsavedChangesPrompt({ message, onDiscard, onSave }) {
   return (
     <div className="modalBackdrop saveChangesBackdrop" role="presentation" data-edit-exit-prompt="true" onMouseDown={event => event.stopPropagation()}>
@@ -2867,7 +2827,6 @@ export default function App() {
   const [newAllowedUserEmail, setNewAllowedUserEmail] = useState("");
   const [actionMessage, setActionMessage] = useState("");
   const [isActionMenuOpen, setIsActionMenuOpen] = useState(false);
-  const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
   const [isUserDocOpen, setIsUserDocOpen] = useState(false);
   const [isTagManagerOpen, setIsTagManagerOpen] = useState(false);
   const [isUserManagerOpen, setIsUserManagerOpen] = useState(false);
@@ -2937,7 +2896,6 @@ export default function App() {
       setColumnFilters(getDefaultColumnFilters("open"));
       setHighlightedTaskId(null);
       setIsActionMenuOpen(false);
-      setIsMobileFilterOpen(false);
       setIsTagManagerOpen(false);
       setIsUserManagerOpen(false);
       setIsUserDocOpen(false);
@@ -3349,19 +3307,18 @@ export default function App() {
   }, [tasks, deletedRetentionDays]);
 
   useEffect(() => {
-    if (!isActionMenuOpen && !isMobileFilterOpen && !isTagManagerOpen && !isUserManagerOpen) return undefined;
+    if (!isActionMenuOpen && !isTagManagerOpen && !isUserManagerOpen) return undefined;
 
     function closeMenusOnOutsidePointer(event) {
       if (topbarActionsRef.current?.contains(event.target)) return;
       setIsActionMenuOpen(false);
-      setIsMobileFilterOpen(false);
       setIsTagManagerOpen(false);
       setIsUserManagerOpen(false);
     }
 
     document.addEventListener("pointerdown", closeMenusOnOutsidePointer);
     return () => document.removeEventListener("pointerdown", closeMenusOnOutsidePointer);
-  }, [isActionMenuOpen, isMobileFilterOpen, isTagManagerOpen, isUserManagerOpen]);
+  }, [isActionMenuOpen, isTagManagerOpen, isUserManagerOpen]);
 
   useEffect(() => {
     function updateBackToTopVisibility() {
@@ -3693,7 +3650,6 @@ export default function App() {
     };
   }, [tasks, activeTagScope]);
 
-  const taskCodeOptions = useMemo(() => sortTasks(tasks).map(task => task.taskCode).filter(Boolean), [tasks]);
   const tagOptions = useMemo(() => {
     return normalizeTagCatalog(tagCatalog).sort((first, second) => first.localeCompare(second, "de", { sensitivity: "base" }));
   }, [tagCatalog]);
@@ -3702,61 +3658,6 @@ export default function App() {
   const hasAnyUnsavedEditChanges = hasUnsavedEditChanges || hasUnsavedLocalEditChanges;
   const showCompletedAtColumn = activeAppTab === DONE_TAB;
   const isSingleTaskEditMode = Boolean(editingId);
-  const isArchiveViewFilterActive = activeAppTab === DONE_TAB || activeAppTab === DELETED_TAB;
-  const activeFilterCount = useMemo(() => {
-    const tabDefaults = getDefaultColumnFilters(activeAppTab);
-    const columnFilterCount = Object.entries(columnFilters).filter(([key, value]) => {
-      const defaultValue = tabDefaults[key];
-      return value !== defaultValue;
-    }).length;
-    return columnFilterCount + (isArchiveViewFilterActive ? 1 : 0);
-  }, [activeAppTab, columnFilters, isArchiveViewFilterActive]);
-  const activeFilterBadges = useMemo(() => {
-    const defaults = getDefaultColumnFilters(activeAppTab);
-    const labels = {
-      overviewSearch: "Search",
-      taskCode: "ID",
-      prio: "Prio",
-      tagFilter: "Tag",
-      task: "Task",
-      beschreibung: "Description",
-      subtaskFilter: "Subtasks",
-      googleStatus: "Status",
-      startdatum: "Start",
-      faellig: "Due",
-      dueStatus: "Due status",
-      completedAt: "Done on",
-      deletedAt: "Deleted on",
-      prioSort: "Priority sorted",
-      tagSort: "Tag sorted",
-      taskSort: "Task sorted",
-      beschreibungSort: "Description sorted",
-      subtaskSort: "Subtasks sorted",
-      googleStatusSort: "Status sorted",
-      startdatumSort: "Start sorted",
-      faelligSort: "Due sorted",
-      completedAtSort: "Done sorted",
-      deletedAtSort: "Deleted sorted"
-    };
-    function formatFilterValue(key, value) {
-      if (key === "tagFilter" && value === "-") return "No tag";
-      return getDisplayValue(value);
-    }
-
-    const viewFilterBadges = isArchiveViewFilterActive
-      ? [{ key: "viewFilter", label: "View", value: getViewLabel(activeAppTab) }]
-      : [];
-    return [
-      ...viewFilterBadges,
-      ...Object.entries(columnFilters)
-      .filter(([key, value]) => value !== defaults[key])
-      .map(([key, value]) => ({ key, label: labels[key] || key, value: formatFilterValue(key, value) }))
-    ];
-  }, [activeAppTab, columnFilters, isArchiveViewFilterActive]);
-  const visibleActiveFilterBadges = useMemo(
-    () => activeFilterBadges.filter(filter => filter.key !== "overviewSearch"),
-    [activeFilterBadges]
-  );
   const currentSelectionBadges = useMemo(() => {
     const scope = activeTagScope === "all" ? "All tags" : `#${activeTagScope}`;
     const mode = isKanbanView ? "Kanban" : "List";
@@ -3768,10 +3669,6 @@ export default function App() {
       ...(search ? [{ key: "search", label: "Search", value: search }] : [])
     ];
   }, [activeAppTab, activeTagScope, columnFilters, isKanbanView]);
-  const filterButtonTitle = useMemo(() => {
-    if (!activeFilterBadges.length) return "Filter";
-    return `Active filters/sorts (${activeFilterBadges.length}): ${activeFilterBadges.map(filter => `${filter.label}: ${filter.value}`).join("; ")}`;
-  }, [activeFilterBadges]);
 
   const showDeletedAtColumn = activeAppTab === DELETED_TAB;
   const defaultTaskDetailMode = normalizeTaskDetailMode(isMobileViewport ? upcomingBadgeDefaults.mobile : upcomingBadgeDefaults.browser);
@@ -3919,17 +3816,6 @@ export default function App() {
     });
   }
 
-  function resetFilters() {
-    if (isArchiveViewFilterActive) {
-      setActiveAppTab(ACTIVE_TAB);
-      setColumnFilters(getDefaultColumnFilters(ACTIVE_TAB));
-    } else {
-      setColumnFilters(getDefaultColumnFilters(activeAppTab));
-    }
-    setIsActionMenuOpen(false);
-    setIsMobileFilterOpen(false);
-  }
-
   function getNavigationTagScope(task) {
     if (activeTagScope !== "all" && hasTag(task, activeTagScope)) return activeTagScope;
     return activeSelectedTagTabs.find(tag => hasTag(task, tag)) || "all";
@@ -3937,7 +3823,6 @@ export default function App() {
 
   function closeHeaderMenus() {
     setIsActionMenuOpen(false);
-    setIsMobileFilterOpen(false);
     setIsTagManagerOpen(false);
     setIsUserManagerOpen(false);
   }
@@ -4267,7 +4152,6 @@ export default function App() {
       clearEdit();
       setColumnFilters({ ...getDefaultColumnFilters(nextTab), dueStatus: nextDueStatus });
       setIsActionMenuOpen(false);
-      setIsMobileFilterOpen(false);
     });
   }
 
@@ -4282,7 +4166,6 @@ export default function App() {
       clearEdit();
       setColumnFilters(getDefaultColumnFilters(nextTab));
       setIsActionMenuOpen(false);
-      setIsMobileFilterOpen(false);
     });
   }
 
@@ -4292,7 +4175,6 @@ export default function App() {
       setActiveAppTab("capture");
       clearEdit();
       setIsActionMenuOpen(false);
-      setIsMobileFilterOpen(false);
       setIsTagManagerOpen(false);
       setIsUserManagerOpen(false);
     });
@@ -4309,7 +4191,6 @@ export default function App() {
       clearEdit();
       setColumnFilters(getDefaultColumnFilters(ACTIVE_TAB));
       setIsActionMenuOpen(false);
-      setIsMobileFilterOpen(false);
       setIsTagManagerOpen(false);
       setIsUserManagerOpen(false);
     });
@@ -4901,131 +4782,6 @@ export default function App() {
       />
     </div>
   );
-  const filterMenu = (
-    <section className="actionsMenu filterMenu" aria-label="Filter">
-      <button type="button" className="iconButton popupCloseButton" onClick={() => setIsMobileFilterOpen(false)} title="Close">
-        <X size={16} />
-      </button>
-      <FilterSortField label="ID" sortValue={columnFilters.taskCodeSort} onSortChange={value => updateColumnFilter("taskCodeSort", value)}>
-        <ComboInput
-          value={columnFilters.taskCode}
-          options={taskCodeOptions}
-          onChange={value => updateColumnFilter("taskCode", value)}
-          placeholder="All"
-          ariaLabel="Select ID"
-        />
-      </FilterSortField>
-      <label>
-        <span>Prio</span>
-        <select value={columnFilters.prio} onChange={event => updateColumnFilter("prio", event.target.value)}>
-          <option value="Alle">All</option>
-          {PRIO_OPTIONS.map(option => (
-            <option key={option} value={option}>{getDisplayValue(option)}</option>
-          ))}
-        </select>
-        <SortToggle value={columnFilters.prioSort} onChange={value => updateColumnFilter("prioSort", value)} ariaLabel="Sort Prio" />
-      </label>
-      <label>
-        <span>Tag</span>
-        <select value={columnFilters.tagFilter} onChange={event => updateColumnFilter("tagFilter", event.target.value)}>
-          <option value="">All</option>
-          <option value="-">No tag</option>
-          {tagOptions.map(option => (
-            <option key={option} value={option}>{getDisplayValue(option)}</option>
-          ))}
-        </select>
-        <SortToggle value={columnFilters.tagSort} onChange={value => updateColumnFilter("tagSort", value)} ariaLabel="Sort tag" />
-      </label>
-      <label>
-        <span>Task</span>
-        <input
-          value={columnFilters.task}
-          onChange={event => updateColumnFilter("task", event.target.value)}
-          placeholder="All"
-        />
-        <SortToggle value={columnFilters.taskSort} onChange={value => updateColumnFilter("taskSort", value)} ariaLabel="Sort task" />
-      </label>
-      <label>
-        <span>Description</span>
-        <input
-          value={columnFilters.beschreibung}
-          onChange={event => updateColumnFilter("beschreibung", event.target.value)}
-          placeholder="All"
-        />
-        <SortToggle value={columnFilters.beschreibungSort} onChange={value => updateColumnFilter("beschreibungSort", value)} ariaLabel="Sort description" />
-      </label>
-      <label>
-        <span>Subtasks</span>
-        <input
-          value={columnFilters.subtaskFilter}
-          onChange={event => updateColumnFilter("subtaskFilter", event.target.value)}
-          placeholder="All"
-        />
-        <SortToggle value={columnFilters.subtaskSort} onChange={value => updateColumnFilter("subtaskSort", value)} ariaLabel="Sort subtasks" />
-      </label>
-      <label>
-        <span>Status</span>
-        <select value={columnFilters.googleStatus} onChange={event => updateColumnFilter("googleStatus", event.target.value)}>
-          {STATUS_FILTER_OPTIONS.map(option => (
-            <option key={option} value={option}>{getDisplayValue(option)}</option>
-          ))}
-        </select>
-        <SortToggle value={columnFilters.googleStatusSort} onChange={value => updateColumnFilter("googleStatusSort", value)} ariaLabel="Sort status" />
-      </label>
-      <label>
-        <span>Start date</span>
-        <input
-          value={columnFilters.startdatum}
-          onChange={event => updateColumnFilter("startdatum", event.target.value)}
-          placeholder="All"
-        />
-        <SortToggle value={columnFilters.startdatumSort} onChange={value => updateColumnFilter("startdatumSort", value)} ariaLabel="Sort start date" />
-      </label>
-      <label>
-        <span>Due state</span>
-        <select value={columnFilters.dueStatus} onChange={event => updateColumnFilter("dueStatus", event.target.value)}>
-          {DUE_STATUS_OPTIONS.map(option => (
-            <option key={option} value={option}>{getDisplayValue(option)}</option>
-          ))}
-        </select>
-      </label>
-      <label>
-        <span>Due date</span>
-        <input
-          value={columnFilters.faellig}
-          onChange={event => updateColumnFilter("faellig", event.target.value)}
-          placeholder="All"
-        />
-        <SortToggle value={columnFilters.faelligSort} onChange={value => updateColumnFilter("faelligSort", value)} ariaLabel="Sort due date" />
-      </label>
-      {showCompletedAtColumn && (
-        <label>
-          <span>Done on</span>
-          <input
-            value={columnFilters.completedAt}
-            onChange={event => updateColumnFilter("completedAt", event.target.value)}
-            placeholder="All"
-          />
-          <SortToggle value={columnFilters.completedAtSort} onChange={value => updateColumnFilter("completedAtSort", value)} ariaLabel="Sort done date" />
-        </label>
-      )}
-      {showDeletedAtColumn && (
-        <label>
-          <span>Deleted on</span>
-          <input
-            value={columnFilters.deletedAt}
-            onChange={event => updateColumnFilter("deletedAt", event.target.value)}
-            placeholder="All"
-          />
-          <SortToggle value={columnFilters.deletedAtSort} onChange={value => updateColumnFilter("deletedAtSort", value)} ariaLabel="Sort deleted date" />
-        </label>
-      )}
-      <button type="button" className="secondaryButton" onClick={resetFilters}>
-        Reset filters
-      </button>
-    </section>
-  );
-
   const tagManagerMenu = (
     <section className="actionsMenu tagManagerMenu" aria-label="Tags">
       <button type="button" className="iconButton popupCloseButton" onClick={() => setIsTagManagerOpen(false)} title="Close">
@@ -5147,42 +4903,11 @@ export default function App() {
               {taskDetailDisplayMode === "maximum" ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
             </button>
           )}
-          {isListTab(activeAppTab) && !isSingleTaskEditMode && (
-            <>
-              <button
-                type="button"
-                className="iconButton filterIconButton"
-                onClick={() => {
-                  setIsMobileFilterOpen(current => !current);
-                  setIsActionMenuOpen(false);
-                  setIsTagManagerOpen(false);
-                  setIsUserManagerOpen(false);
-                }}
-                aria-expanded={isMobileFilterOpen}
-                aria-label={`Filter${activeFilterBadges.length > 0 ? ` (${activeFilterBadges.length})` : ""}`}
-                title={filterButtonTitle}
-              >
-                <SlidersHorizontal size={18} />
-                {activeFilterBadges.length > 0 && <span className="iconBadgeCount">{activeFilterBadges.length}</span>}
-              </button>
-              <button
-                type="button"
-                className="iconButton"
-                onClick={resetFilters}
-                disabled={activeFilterCount === 0}
-                aria-label="Reset filters"
-                title="Reset filters"
-              >
-                <RotateCcw size={18} />
-              </button>
-            </>
-          )}
           <button
             type="button"
             className="iconButton"
             onClick={() => {
               setIsActionMenuOpen(current => !current);
-              setIsMobileFilterOpen(false);
               setIsTagManagerOpen(false);
               setIsUserManagerOpen(false);
             }}
@@ -5195,7 +4920,6 @@ export default function App() {
           {isActionMenuOpen && actionMenu}
           {isTagManagerOpen && tagManagerMenu}
           {isUserManagerOpen && userManagerMenu}
-          {isMobileFilterOpen && isListTab(activeAppTab) && filterMenu}
           <input
             ref={fileInputRef}
             className="hiddenFile"
@@ -5229,16 +4953,6 @@ export default function App() {
             {currentSelectionBadges.map(item => (
               <span key={item.key} className="activeFilterBadge" title={`${item.label}: ${item.value}`}>
                 {item.label}: {item.value}
-              </span>
-            ))}
-          </div>
-        )}
-
-        {isListTab(activeAppTab) && !isSingleTaskEditMode && visibleActiveFilterBadges.length > 0 && (
-          <div className="activeFilterBadges" aria-label="Active filters">
-            {visibleActiveFilterBadges.map(filter => (
-              <span key={filter.key} className="activeFilterBadge" title={`${filter.label}: ${filter.value}`}>
-                {filter.label}: {filter.value}
               </span>
             ))}
           </div>
@@ -5482,10 +5196,10 @@ export default function App() {
               <section>
                 <h3>Navigation</h3>
                 <ul>
-                  <li>The top title resets the session to All without status, due, tag, or column filters. Current view, scope, mode, and search are shown in the info line below the tabs; the filter icon shows the active filter/sort count and lists them on hover. Done and Deleted count as view filters and can be left with Reset filters.</li>
+                  <li>The top title resets the session back to All. Current view, scope, mode, and search are shown in the info line below the tabs.</li>
                   <li>All is the primary tab. Tasks that need immediate attention, such as clarification, reached start dates, due-today work, overdue work, and matching subtask reminders, are marked directly on the task with a red exclamation mark.</li>
-                  <li>All, Done, and Deleted share the row above the tag row. Backlog and Doing can still be reached from the header filter's Status dropdown.</li>
-                  <li>The search field is session-only and searches across all active tasks regardless of the currently selected tab or filters. In Done, it searches done tasks only; in Deleted, it searches deleted tasks only.</li>
+                  <li>All, Done, and Deleted share the row above the tag row. Backlog and Doing tasks are no longer separately filterable and both show together in All.</li>
+                  <li>The search field is session-only and searches across all active tasks regardless of the currently selected tab. In Done, it searches done tasks only; in Deleted, it searches deleted tasks only.</li>
                 </ul>
               </section>
 
@@ -5545,7 +5259,7 @@ export default function App() {
                 <h3>Options</h3>
                 <ul>
                   <li>Options contains persistent settings for layout, dark mode, tooltips, browser/phone edit section defaults, tab layout, badge columns, Kanban columns, default views, tags, users, import/export, and logout.</li>
-                  <li>Only settings changed in Options persist across app restarts. Working selections such as active tab, tag scope, search text, filters, column sorts, the header List/Kanban toggle, and the header task-detail toggle remain session-only while the app is open. A fresh app session starts from the Options defaults.</li>
+                  <li>Only settings changed in Options persist across app restarts. Working selections such as active tab, tag scope, search text, the header List/Kanban toggle, and the header task-detail toggle remain session-only while the app is open. A fresh app session starts from the Options defaults.</li>
                   <li>Tags are managed in Options. Up to 10 tags can exist, selected tags can become top-row tag tabs, and tag order can be changed by drag-and-drop.</li>
                 </ul>
               </section>
@@ -7336,56 +7050,6 @@ function MobileDescriptionPanel({ title, children }) {
         {children}
       </div>
     </section>
-  );
-}
-
-function ComboInput({ value, options, onChange, placeholder, ariaLabel, maxLength = 0, guidance = null, guidanceLabel = "" }) {
-  const [isOpen, setIsOpen] = useState(false);
-  const visibleOptions = options.filter(option => option !== value);
-
-  return (
-    <div className="comboBox">
-      <input
-        value={value}
-        onClick={() => setIsOpen(true)}
-        onChange={event => {
-          onChange(truncateText(event.target.value, maxLength));
-          setIsOpen(false);
-        }}
-        onBlur={() => window.setTimeout(() => setIsOpen(false), 120)}
-        placeholder={placeholder}
-        maxLength={maxLength || undefined}
-      />
-      <button
-        type="button"
-        className="comboArrow"
-        onPointerDown={event => {
-          event.preventDefault();
-          setIsOpen(current => !current);
-        }}
-        aria-label={ariaLabel}
-        aria-expanded={isOpen}
-      />
-      {isOpen && visibleOptions.length > 0 && (
-        <div className="comboMenu" role="listbox">
-          {visibleOptions.map(option => (
-            <button
-              key={option}
-              type="button"
-              role="option"
-              onMouseDown={event => {
-                event.preventDefault();
-                onChange(option);
-                setIsOpen(false);
-              }}
-            >
-              {option}
-            </button>
-          ))}
-        </div>
-      )}
-      {guidance && <InputGuidance value={value} limits={guidance} label={guidanceLabel || ariaLabel || "Value"} />}
-    </div>
   );
 }
 
