@@ -641,16 +641,6 @@ main {
   margin-top: -10px;
 }
 
-.dueTabs {
-  justify-self: start;
-  margin-top: -4px;
-}
-
-.dueTabs button {
-  min-height: 36px;
-  padding: 0 14px;
-}
-
 .scopeTabs {
   width: 100%;
 }

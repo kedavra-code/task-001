@@ -49,7 +49,6 @@ const DARK_MODE_BROWSER_STORAGE_KEY = "task-001.dark-mode-browser.v1";
 const DARK_MODE_MOBILE_STORAGE_KEY = "task-001.dark-mode-mobile.v1";
 const EDIT_SECTION_DEFAULTS_STORAGE_KEY = "task-001.edit-section-defaults.v1";
 const EDIT_SECTION_DEFAULTS_VERSION = 5;
-const DUE_TABS_VISIBLE_STORAGE_KEY = "task-001.due-tabs-visible.v1";
 const TAB_LAYOUT_STORAGE_KEY = "task-001.tab-layout.v1";
 const CARD_BADGE_COLUMNS_STORAGE_KEY = "task-001.card-badge-columns.v1";
 const UPCOMING_BADGE_DEFAULTS_STORAGE_KEY = "task-001.upcoming-badge-defaults.v1";
@@ -1862,14 +1861,6 @@ function loadTooltipsEnabled() {
   }
 }
 
-function loadDueTabsVisible() {
-  try {
-    return localStorage.getItem(DUE_TABS_VISIBLE_STORAGE_KEY) === "true";
-  } catch {
-    return false;
-  }
-}
-
 function loadDarkModeSettings() {
   try {
     const legacyDarkMode = localStorage.getItem(DARK_MODE_STORAGE_KEY) === "true";
@@ -2103,14 +2094,6 @@ function saveBrowserCompactView(isCompact) {
 function saveTooltipsEnabled(isEnabled) {
   try {
     localStorage.setItem(TOOLTIP_ENABLED_STORAGE_KEY, isEnabled ? "true" : "false");
-  } catch {
-    // Local UI preference only.
-  }
-}
-
-function saveDueTabsVisible(isVisible) {
-  try {
-    localStorage.setItem(DUE_TABS_VISIBLE_STORAGE_KEY, isVisible ? "true" : "false");
   } catch {
     // Local UI preference only.
   }
@@ -3047,7 +3030,6 @@ export default function App() {
   const hasAppliedRemoteStartTabRef = useRef(initialSessionViewSnapshot !== initialDefaultViewSnapshot);
   const [isKanbanView, setIsKanbanView] = useState(() => initialSessionViewSnapshot.isKanbanView);
   const [areTooltipsEnabled, setAreTooltipsEnabled] = useState(loadTooltipsEnabled);
-  const [areDueTabsVisible, setAreDueTabsVisible] = useState(loadDueTabsVisible);
   const [darkModeSettings, setDarkModeSettings] = useState(loadDarkModeSettings);
   const [isMobileViewport, setIsMobileViewport] = useState(initialIsMobileViewport);
   const [isKanbanMobileViewport, setIsKanbanMobileViewport] = useState(isKanbanMobileViewportNow);
@@ -3274,18 +3256,6 @@ export default function App() {
   useEffect(() => {
     saveKanbanColumnKeys(kanbanColumnKeys);
   }, [kanbanColumnKeys]);
-
-  useEffect(() => {
-    saveDueTabsVisible(areDueTabsVisible);
-    if (areDueTabsVisible) return;
-    setColumnFilters(current => {
-      if (!["heute starten", "überfällig"].includes(current.dueStatus)) return current;
-      return { ...current, dueStatus: "Alle" };
-    });
-  }, [areDueTabsVisible]);
-
-
-
 
   useEffect(() => {
     saveSelectedTagTabs(selectedTagTabs);
@@ -3945,17 +3915,6 @@ export default function App() {
       deleted: scopedTasks.filter(isDeleted).length
     };
   }, [tasks, activeTagScope]);
-  const scopedDueCounts = useMemo(() => {
-    const scopedTasks = tasks.filter(task => {
-      if (activeTagScope !== "all" && !hasTag(task, activeTagScope)) return false;
-      if (isDeleted(task)) return false;
-      return task.googleStatus === (STATUS_FILTER_BY_TAB[activeAppTab] || "Offen");
-    });
-    return {
-      startReached: scopedTasks.filter(task => matchesDueStatusFilter(task, "heute starten")).length,
-      overdue: scopedTasks.filter(task => matchesDueStatusFilter(task, "überfällig")).length
-    };
-  }, [tasks, activeTagScope, activeAppTab]);
 
   const reviewSummary = useMemo(() => getTaskReviewSummary(tasks), [tasks]);
   const reviewTasks = useMemo(() => tasks.filter(task => shouldShowInReview(task)), [tasks]);
@@ -4202,19 +4161,6 @@ export default function App() {
     }
     setIsActionMenuOpen(false);
     setIsMobileFilterOpen(false);
-  }
-
-  function showDueFilterTab(dueStatus) {
-    requestEditExit(() => {
-      setActionMessage("");
-      const nextTab = STATUS_TABS.includes(activeAppTab) ? activeAppTab : "open";
-      setActiveAppTab(nextTab);
-      const isActiveDueFilter = columnFilters.dueStatus === dueStatus;
-      setColumnFilters({ ...getDefaultColumnFilters(nextTab), dueStatus: isActiveDueFilter ? "Alle" : dueStatus });
-      setHighlightedTaskId(null);
-      setIsMobileFilterOpen(false);
-      clearEdit();
-    });
   }
 
   function getNavigationTagScope(task) {
@@ -5132,14 +5078,6 @@ export default function App() {
         </label>
         <span className="menuGroupTitle">Tabs</span>
 
-        <label className="menuCheckbox" title="Shows the Start reached and Overdue tabs below the status tabs.">
-          <input
-            type="checkbox"
-            checked={areDueTabsVisible}
-            onChange={event => setAreDueTabsVisible(event.target.checked)}
-          />
-          <span>Show due tabs</span>
-        </label>
         <button type="button" className="secondaryButton menuResetTabsButton" onClick={resetTabLayout} title="Resets tab layout to All, then tags.">
           Reset tabs
         </button>
@@ -5709,23 +5647,6 @@ export default function App() {
           </div>
         )}
 
-        {STATUS_TABS.includes(activeAppTab) && !isSingleTaskEditMode && (
-          <>
-            {areDueTabsVisible && (
-              <nav className="appTabs dueTabs" aria-label="Due state">
-                <button type="button" className={!isOverviewSearchActive && columnFilters.dueStatus === "heute starten" ? "active" : ""} onClick={() => showDueFilterTab("heute starten")} title="Show tasks whose start date has been reached">
-                  Start reached
-                  <span className="tabCount">{scopedDueCounts.startReached}</span>
-                </button>
-                <button type="button" className={!isOverviewSearchActive && columnFilters.dueStatus === "überfällig" ? "active" : ""} onClick={() => showDueFilterTab("überfällig")} title="Overdue: open or started tasks/subtasks whose due date has been reached">
-                  Overdue
-                  <span className="tabCount">{scopedDueCounts.overdue}</span>
-                </button>
-              </nav>
-            )}
-          </>
-        )}
-
         {actionMessage && <p className="successMessage appMessage">{actionMessage}</p>}
 
         {(isListTab(activeAppTab) || activeAppTab === "capture") && (
@@ -6229,7 +6150,7 @@ export default function App() {
                 <h3>Navigation</h3>
                 <ul>
                   <li>The top title resets the session to All without status, due, tag, or column filters. Current view, scope, mode, and search are shown in the info line below the tabs; the filter icon shows the active filter/sort count and lists them on hover. Done and Deleted count as view filters and can be left with Reset filters.</li>
-                  <li>All is the primary tab. Tasks that need immediate attention, such as clarification, reached start dates, due-today work, overdue work, and matching subtask reminders, are marked directly on the task with a red exclamation mark and can also be shown as the optional Start reached and Overdue due tabs.</li>
+                  <li>All is the primary tab. Tasks that need immediate attention, such as clarification, reached start dates, due-today work, overdue work, and matching subtask reminders, are marked directly on the task with a red exclamation mark.</li>
                   <li>All and Done share the row above the tag row. Backlog and Doing can still be reached from the header filter's Status dropdown; Deleted, Review, and Close-out are available from Options.</li>
                   <li>The search field is session-only and searches across all active tasks regardless of the currently selected tab or filters. In Done, it searches done tasks only; in Deleted, it searches deleted tasks only.</li>
                 </ul>
@@ -6292,10 +6213,9 @@ export default function App() {
               <section>
                 <h3>Options</h3>
                 <ul>
-                  <li>Options contains persistent settings for layout, dark mode, tooltips, browser/phone edit section defaults, due tabs, tab layout, badge columns, Kanban columns, default views, tags, users, import/export, and logout.</li>
+                  <li>Options contains persistent settings for layout, dark mode, tooltips, browser/phone edit section defaults, tab layout, badge columns, Kanban columns, default views, tags, users, import/export, and logout.</li>
                   <li>Only settings changed in Options persist across app restarts. Working selections such as active tab, tag scope, search text, filters, column sorts, the header List/Kanban toggle, and the header task-detail toggle remain session-only while the app is open. A fresh app session starts from the Options defaults.</li>
                   <li>Tags are managed in Options. Up to 10 tags can exist, selected tags can become top-row tag tabs, and tag order can be changed by drag-and-drop.</li>
-                  <li>The optional due tabs Start reached and Overdue can be shown or hidden from Options. Hidden due tabs do not remove the underlying red due-date coloring or the exclamation-mark reminder on tasks.</li>
                 </ul>
               </section>
             </div>
