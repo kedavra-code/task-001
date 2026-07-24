@@ -1756,41 +1756,6 @@ input:read-only {
   display: none;
 }
 
-.mobileDetailsDisclosure {
-  padding: 0;
-  border: 0;
-  background: transparent;
-}
-
-.mobileDetailsDisclosure summary {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  color: #3a434d;
-  cursor: pointer;
-  font-size: 12px;
-  font-weight: 900;
-  list-style: none;
-  min-width: 0;
-}
-
-.mobileDetailsDisclosure summary::-webkit-details-marker {
-  display: none;
-}
-
-.mobileDetailsDisclosure summary::before {
-  content: "▾";
-  color: #61707f;
-  font-size: 12px;
-}
-
-.mobileDetailsDisclosure:not([open]) summary::before {
-  content: "▸";
-}
-
-.mobileDetailsDisclosure[open] summary {
-  margin-bottom: 6px;
-}
 .browserCompactTaskList .mobileDescriptionBlock {
   display: grid;
   gap: 3px;
@@ -3885,8 +3850,7 @@ input:read-only {
 [data-theme="dark"] .commentItem small,
 [data-theme="dark"] .commentReadList small,
 [data-theme="dark"] .taskEditSection summary::before,
-[data-theme="dark"] .mobileBadgeSection summary::before,
-[data-theme="dark"] .mobileDetailsDisclosure summary::before {
+[data-theme="dark"] .mobileBadgeSection summary::before {
   color: #a8b3bf;
 }
 
