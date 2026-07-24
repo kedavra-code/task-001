@@ -7,13 +7,6 @@ create table if not exists public.tasks (
   impact text,
   wann text,
   prio text,
-  -- bearbeitbarkeit, bearbeiter, dispatch_status, and follow_up_date are no longer read/written by the app since Workability/Assignee/Action/Follow-up were removed on 2026-07-24; kept only for old rows.
-  bearbeitbarkeit text,
-  bearbeiter text,
-  dispatch_status text not null default 'delegieren',
-  follow_up_date date,
-  depends_on_task_id text references public.tasks(id) on delete set null,
-  depends_on_task_ids text[] not null default '{}',
   task text not null,
   beschreibung text,
   comments jsonb not null default '[]'::jsonb,
@@ -32,9 +25,6 @@ alter table public.tasks
 add column if not exists user_id uuid references auth.users(id) on delete cascade;
 
 alter table public.tasks
-add column if not exists depends_on_task_ids text[] not null default '{}';
-
-alter table public.tasks
 add column if not exists subtasks text[] not null default '{}';
 
 alter table public.tasks
@@ -42,19 +32,6 @@ add column if not exists comments jsonb not null default '[]'::jsonb;
 
 alter table public.tasks
 add column if not exists tags text[] not null default '{}';
-
--- bearbeitbarkeit, bearbeiter, dispatch_status, and follow_up_date are no longer read/written by the app since Workability/Assignee/Action/Follow-up were removed on 2026-07-24; kept only for old rows.
-alter table public.tasks
-add column if not exists bearbeitbarkeit text;
-
-alter table public.tasks
-add column if not exists bearbeiter text;
-
-alter table public.tasks
-add column if not exists dispatch_status text not null default 'delegieren';
-
-alter table public.tasks
-add column if not exists follow_up_date date;
 
 alter table public.tasks
 add column if not exists completed_at date;
@@ -79,16 +56,11 @@ create table if not exists public.user_settings (
   user_id uuid primary key references auth.users(id) on delete cascade,
   selected_tag_tabs text[] not null default '{}',
   available_tags text[] not null default '{}',
-  browser_compact_view boolean default true,
-  -- master_dispatcher_name is no longer read/written by the app since the Master Dispatcher setting was removed on 2026-07-24; kept only for old rows.
-  master_dispatcher_name text default 'Lars',
   tooltips_enabled boolean default true,
   dark_mode boolean default false,
   dark_mode_browser boolean default false,
   dark_mode_mobile boolean default false,
   edit_section_defaults jsonb not null default '{"version":5,"browser":{"parameters":true,"description":true,"comments":true,"subtasks":true},"mobile":{"parameters":true,"description":true,"comments":true,"subtasks":true}}'::jsonb,
-  -- due_reminder_order is no longer read/written by the app since the Upcoming tab was removed; kept only for old rows.
-  due_reminder_order jsonb not null default '[]'::jsonb,
   tab_layout jsonb not null default '[]'::jsonb,
   card_badge_columns jsonb not null default '{"overview":"default","edit":"default","kanban":"default"}'::jsonb,
   default_view_mode text not null default 'kanban',
@@ -108,13 +80,6 @@ add column if not exists available_tags text[] not null default '{}';
 
 alter table public.user_settings
 add column if not exists updated_at timestamptz not null default now();
-
-alter table public.user_settings
-add column if not exists browser_compact_view boolean default true;
-
--- master_dispatcher_name is no longer read/written by the app since the Master Dispatcher setting was removed on 2026-07-24; kept only for old rows.
-alter table public.user_settings
-add column if not exists master_dispatcher_name text default 'miro';
 
 alter table public.user_settings
 add column if not exists tooltips_enabled boolean default true;
@@ -149,10 +114,6 @@ end $$;
 alter table public.user_settings
 add column if not exists edit_section_defaults jsonb not null default '{"version":5,"browser":{"parameters":true,"description":true,"comments":true,"subtasks":true},"mobile":{"parameters":true,"description":true,"comments":true,"subtasks":true}}'::jsonb;
 
--- due_reminder_order is no longer read/written by the app since the Upcoming tab was removed; kept only for old rows.
-alter table public.user_settings
-add column if not exists due_reminder_order jsonb not null default '[]'::jsonb;
-
 alter table public.user_settings
 add column if not exists tab_layout jsonb not null default '[]'::jsonb;
 
@@ -186,6 +147,18 @@ add column if not exists upcoming_badge_defaults jsonb not null default '{"versi
 
 
 alter table public.user_settings enable row level security;
+
+-- Retired columns, kept unused for a while after each feature was removed; dropped 2026-07-24.
+-- Safe to run repeatedly and on fresh installs (no-op there since the columns are never created above).
+alter table public.tasks drop column if exists bearbeitbarkeit;
+alter table public.tasks drop column if exists bearbeiter;
+alter table public.tasks drop column if exists dispatch_status;
+alter table public.tasks drop column if exists follow_up_date;
+alter table public.tasks drop column if exists depends_on_task_id;
+alter table public.tasks drop column if exists depends_on_task_ids;
+alter table public.user_settings drop column if exists browser_compact_view;
+alter table public.user_settings drop column if exists master_dispatcher_name;
+alter table public.user_settings drop column if exists due_reminder_order;
 
 create table if not exists public.task_subtasks (
   id uuid primary key default gen_random_uuid(),

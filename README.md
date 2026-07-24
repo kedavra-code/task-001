@@ -161,10 +161,6 @@ end $$;
 alter table public.user_settings
 add column if not exists edit_section_defaults jsonb not null default '{"version":5,"browser":{"parameters":true,"description":true,"comments":true,"subtasks":true},"mobile":{"parameters":true,"description":true,"comments":true,"subtasks":true}}'::jsonb;
 
--- due_reminder_order is no longer read/written by the app since the Upcoming tab was removed; kept only for old rows.
-alter table public.user_settings
-add column if not exists due_reminder_order jsonb not null default '[]'::jsonb;
-
 alter table public.user_settings
 add column if not exists tab_layout jsonb not null default '[]'::jsonb;
 
