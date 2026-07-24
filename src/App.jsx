@@ -34,15 +34,12 @@ import {
 } from "./subtasks";
 import {
   REVIEW_STALE_DAYS,
-  clampFollowUpDateToDueDate,
   getTaskReviewReasons,
   getTaskReviewSummary,
-  isDelegatedWithoutResponse,
   shouldShowInReview
 } from "./reviewTools";
 
 const STORAGE_KEY = "task-sheet.tasks.v1";
-const MASTER_DISPATCHER_STORAGE_KEY = "task-sheet.master-dispatcher.v1";
 const SELECTED_TAG_TABS_STORAGE_KEY = "task-001.selected-tag-tabs.v1";
 const TAG_CATALOG_STORAGE_KEY = "task-001.tag-catalog.v1";
 const BROWSER_COMPACT_VIEW_STORAGE_KEY = "task-001.browser-compact-view.v1";
@@ -67,7 +64,6 @@ const TASK_ID_PREFIX = "T";
 const MAX_TASK_TAGS = 1;
 const MAX_TAG_CATALOG_SIZE = 10;
 const ALLOWED_USER_EMAIL = "lars.tremmel@gmail.com";
-const DEFAULT_MASTER_DISPATCHER = "Lars";
 const DEFAULT_EDIT_SECTION_STATE = {
   parameters: true,
   description: true,
@@ -101,7 +97,6 @@ const CARD_BADGE_CELL_GAP = 5;
 const KANBAN_COLUMN_EXTRA_WIDTH = 36;
 const KANBAN_COLUMNS = [
   { key: "clarify", title: "Clarify" },
-  { key: "dispatch", title: "Delegate" },
   { key: "open", title: "Open" },
   { key: "started", title: "Started" }
 ];
@@ -113,20 +108,15 @@ const TEXT_LIMITS = {
   subtask: { warn: 250, max: 1000 },
   comment: { warn: 500, max: 5000 },
   description: { max: 20000 },
-  tag: { max: 24 },
-  assignee: { max: 60 }
+  tag: { max: 24 }
 };
 const CSV_COLUMNS = [
   "taskCode",
   "handlungsdruck",
-  "bearbeitbarkeit",
   "risiko",
   "impact",
   "wann",
   "prio",
-  "bearbeiter",
-  "dispatchStatus",
-  "followUpDate",
   "task",
   "beschreibung",
   "comments",
@@ -144,12 +134,9 @@ const CSV_COLUMNS = [
 
 const WANN_OPTIONS = ["klären", "sofort", "Später", "Irgendwann"];
 const PRIO_OPTIONS = ["P1", "P2", "P3", "priorisieren"];
-const BASE_BEARBEITER_OPTIONS = ["bestimmen", "Lars", "Sascha"];
 const GOOGLE_STATUS_OPTIONS = ["Offen", "Gestartet", "Erledigt"];
 const TASK_STATUS_OPTIONS = [...GOOGLE_STATUS_OPTIONS, "Gelöscht"];
 const STATUS_FILTER_OPTIONS = ["Alle", "Offen", "Gestartet"];
-const DISPATCH_STATUS_OPTIONS = ["delegieren", "zugeteilt"];
-const ACTION_STATUS_OPTIONS = ["Offen", "selber", ...DISPATCH_STATUS_OPTIONS];
 const DISPLAY_VALUE_LABELS = {
   "Alle": "All",
   "Offen": "Open",
@@ -161,16 +148,9 @@ const DISPLAY_VALUE_LABELS = {
   "Später": "Later",
   "Irgendwann": "Someday",
   "priorisieren": "Prioritize",
-  "bestimmen": "To decide",
-  "selber": "Self",
-  "delegieren": "Delegate",
-  "zugeteilt": "Assigned",
   "hoch": "High",
   "mittel": "Medium",
   "niedrig": "Low",
-  "heute/als Nächstes": "Today/next",
-  "planbar": "Plannable",
-  "unklar": "Unclear",
   "heute starten": "Start today",
   "heute fällig": "Due today",
   "überfällig": "Overdue",
@@ -205,7 +185,6 @@ function getViewLabel(tab) {
   };
   return labels[tab] || getDisplayValue(tab);
 }
-const OTHER_ASSIGNEES_FILTER = "__other_assignees__";
 const ACTIVE_TAB = "active";
 const DEFAULT_START_TAB = ACTIVE_TAB;
 const START_TAB_OPTIONS = [ACTIVE_TAB];
@@ -214,7 +193,6 @@ const REVIEW_TAB = "review";
 const REVIEW_INFO_ITEMS = [
   "old open tasks without movement",
   `started tasks without comments for ${REVIEW_STALE_DAYS}+ days`,
-  "delegated tasks without response/follow-up",
   "tasks without start or due date"
 ];
 const STATUS_TABS = [ACTIVE_TAB, REVIEW_TAB, "open", "started", NEWEST_TAB];
@@ -231,7 +209,6 @@ const STATIC_TAB_IDS = ["all"];
 const DUE_STATUS_OPTIONS = ["Alle", "heute starten", "heute fällig", "überfällig", "geplant", "ohne Fälligkeit"];
 const CRITERIA_PLACEHOLDER = "...";
 const HANDLUNGSDRUCK_OPTIONS = ["hoch", "mittel", "niedrig"];
-const BEARBEITBARKEIT_OPTIONS = ["heute/als Nächstes", "planbar", "unklar"];
 const RISIKO_OPTIONS = ["hoch", "mittel", "niedrig"];
 const IMPACT_OPTIONS = ["hoch", "mittel", "niedrig"];
 
@@ -243,12 +220,6 @@ const DEFAULT_COLUMN_FILTERS = {
   wann: "Alle",
   prioSort: "Standard",
   prio: "Alle",
-  bearbeiterSort: "Standard",
-  bearbeiter: "",
-  actionStatusSort: "Standard",
-  actionStatus: "Alle",
-  followUpDateSort: "Standard",
-  followUpDate: "",
   taskSort: "Standard",
   dueStatus: "Alle",
   task: "",
@@ -286,22 +257,17 @@ function getDefaultColumnFilters(tab = "open") {
 }
 
 const WANN_HELP =
-  "When answers: when should we act?\n\nHigh urgency -> now\nOtherwise, if it can sensibly be handled today/next -> now\nOtherwise, if it is plannable -> later\nOtherwise -> someday\n\nDefault sort: clarify -> now -> later -> someday";
+  "When answers: when should we act?\n\nHigh urgency -> now\nMedium urgency -> later\nLow urgency -> someday\n\nDefault sort: clarify -> now -> later -> someday";
 
 const PRIO_HELP =
   "Priority answers: how important is this?\n\nIf damage is high or impact is high -> P1\nOtherwise, if damage and impact are both medium -> P2\nOtherwise -> P3\n\nDefault sort: prioritize -> P1 -> P2 -> P3";
 
 const EDIT_FIELD_HELP = {
-  handlungsdruck: "How urgently does the situation need a response?",
-  bearbeitbarkeit: "How well can the task be handled now or later? Together with urgency, this derives When.",
+  handlungsdruck: "How urgently does the situation need a response? This derives When.",
   wann: WANN_HELP,
   risiko: "How high is the damage if the task is not done, or done too late? Together with impact, this derives Prio.",
   impact: "How large is the task impact? Together with damage, this derives Prio.",
   prio: PRIO_HELP,
-  bearbeiter: "Who should work on this task?\n\nTo decide/empty: still open who does it\nMaster Dispatcher: do it yourself\nAll other names: delegate or assigned",
-  dispatchStatus: "Dispatcher state for external assignees:\n\nDelegate: the assignee still needs to be informed\nAssigned: the assignee has been informed; the task counts as started from the dispatcher perspective",
-  followUpDate: "Follow-up: when should I ask the assignee again? This is independent of the task start and due dates.",
-  actionStatus: "Calculated action from assignee, Master Dispatcher, and assignment state:\n\nOpen: nobody assigned yet\nSelf: Master Dispatcher does the task\nDelegate: assignee still needs to be informed\nAssigned: assignee is informed; task counts as started",
   tags: "Tag used to classify the task. A task can currently have one tag.",
   task: "Short, clear task title.",
   beschreibung: "Structured description with paragraphs and bullet points.",
@@ -333,14 +299,10 @@ const PRIO_ORDER = {
 
 const EMPTY_TASK = {
   handlungsdruck: CRITERIA_PLACEHOLDER,
-  bearbeitbarkeit: CRITERIA_PLACEHOLDER,
   risiko: CRITERIA_PLACEHOLDER,
   impact: CRITERIA_PLACEHOLDER,
   wann: CRITERIA_PLACEHOLDER,
   prio: CRITERIA_PLACEHOLDER,
-  bearbeiter: "bestimmen",
-  dispatchStatus: "delegieren",
-  followUpDate: "",
   taskCode: "",
   dependsOnTaskId: "",
   dependsOnTaskIds: [],
@@ -381,7 +343,6 @@ const SAMPLE_TASKS = [
     id: crypto.randomUUID(),
     wann: "sofort",
     prio: "P2",
-    bearbeiter: "Lars",
     task: "Info an Team: Ticket Queue ohne AI",
     beschreibung: "Siehe CxS Meeting vom 19.5. ID Service Desk"
   },
@@ -398,7 +359,6 @@ const SAMPLE_TASKS = [
     id: crypto.randomUUID(),
     wann: "Später",
     prio: "P1",
-    bearbeiter: "Sascha",
     task: "Vorbereitung Diaphanium (Termin 25.6.2026)",
     beschreibung: "Siehe auch Formular/Bogen von Robert (-> Email)"
   },
@@ -414,7 +374,6 @@ const SAMPLE_TASKS = [
     id: crypto.randomUUID(),
     wann: "Später",
     prio: "P1",
-    bearbeiter: "Sascha",
     task: "Konzept Betriebsmodus PC Inventory für Lead Agiles + Tools"
   },
   {
@@ -422,7 +381,6 @@ const SAMPLE_TASKS = [
     id: crypto.randomUUID(),
     wann: "Irgendwann",
     prio: "P3",
-    bearbeiter: "Lars",
     task: "BPMN2 mit Codex testen"
   },
   {
@@ -430,7 +388,6 @@ const SAMPLE_TASKS = [
     id: crypto.randomUUID(),
     wann: "sofort",
     prio: "P2",
-    bearbeiter: "Lars",
     task: "BioMed: Kein eigenes SLA mehr, via Dept. SLA",
     beschreibung: "Magda fragen, was es kosten würde (nur Gruppe BioMed)"
   },
@@ -439,7 +396,6 @@ const SAMPLE_TASKS = [
     id: crypto.randomUUID(),
     wann: "Privat",
     prio: "P1",
-    bearbeiter: "Lars",
     task: "Lars 50er"
   },
   {
@@ -454,43 +410,11 @@ const SAMPLE_TASKS = [
     id: crypto.randomUUID(),
     wann: "Privat",
     prio: "P3",
-    bearbeiter: "Lars",
     task: "Powerrack Innenabstand messen",
     beschreibung:
       "https://www.amazon.de/Synergee-Attachment-Designed-Holes-Safety-Presses-Sold/dp/B0FQDSLQ5J"
   }
 ];
-
-function normalizeName(value) {
-  return String(value).trim().toLowerCase();
-}
-
-function getTaskAssignee(taskOrAssignee) {
-  return typeof taskOrAssignee === "object" && taskOrAssignee !== null
-    ? taskOrAssignee.bearbeiter
-    : taskOrAssignee;
-}
-
-function getTaskDispatchStatus(taskOrAssignee) {
-  return typeof taskOrAssignee === "object" && taskOrAssignee !== null
-    ? taskOrAssignee.dispatchStatus
-    : "";
-}
-
-function isExternalAssignee(bearbeiter, masterDispatcherName = DEFAULT_MASTER_DISPATCHER) {
-  const normalized = normalizeName(bearbeiter);
-  const normalizedMaster = normalizeName(masterDispatcherName || DEFAULT_MASTER_DISPATCHER);
-  return Boolean(normalized && normalized !== "bestimmen" && normalized !== normalizedMaster);
-}
-
-function getActionStatus(taskOrAssignee, masterDispatcherName = DEFAULT_MASTER_DISPATCHER) {
-  const bearbeiter = getTaskAssignee(taskOrAssignee);
-  const normalized = normalizeName(bearbeiter);
-  const normalizedMaster = normalizeName(masterDispatcherName || DEFAULT_MASTER_DISPATCHER);
-  if (!normalized || normalized === "bestimmen") return "Offen";
-  if (normalized === normalizedMaster) return "selber";
-  return getTaskDispatchStatus(taskOrAssignee) === "zugeteilt" ? "zugeteilt" : "delegieren";
-}
 
 function getEffectiveWann(wann) {
   return wann === CRITERIA_PLACEHOLDER ? "klären" : wann;
@@ -651,12 +575,6 @@ function normalizeColumnFilters(value, tab = "open") {
   if (!STATUS_FILTER_OPTIONS.includes(filters.googleStatus)) {
     filters.googleStatus = defaults.googleStatus;
   }
-  if (!["Alle", ...ACTION_STATUS_OPTIONS].includes(filters.actionStatus)) {
-    filters.actionStatus = defaults.actionStatus;
-  }
-  if (!["Standard", "Aufsteigend", "Absteigend"].includes(filters.followUpDateSort)) {
-    filters.followUpDateSort = defaults.followUpDateSort;
-  }
   if (!["Standard", "Aufsteigend", "Absteigend"].includes(filters.completedAtSort)) {
     filters.completedAtSort = defaults.completedAtSort;
   }
@@ -669,15 +587,10 @@ function normalizeColumnFilters(value, tab = "open") {
 function getEditTooltip(field, value) {
   const labelByField = {
     handlungsdruck: "Urgency",
-    bearbeitbarkeit: "Workability",
     wann: "When",
     risiko: "Damage",
     impact: "Impact",
     prio: "Prio",
-    bearbeiter: "Assignee",
-    dispatchStatus: "Action",
-    followUpDate: "Follow-up",
-    actionStatus: "Action",
     tags: "Tag",
     task: "Task",
     beschreibung: "Description",
@@ -695,10 +608,7 @@ function getEditTooltip(field, value) {
 function getDerivedCriteriaTooltip(task, field) {
   if (!task) return "";
   if (field === "wann") {
-    return [
-      `Urgency: ${getDisplayValue(task.handlungsdruck)}`,
-      `Workability: ${getDisplayValue(task.bearbeitbarkeit)}`
-    ].join("\n");
+    return `Urgency: ${getDisplayValue(task.handlungsdruck)}`;
   }
   if (field === "prio") {
     return [
@@ -715,14 +625,10 @@ function getTaskTooltip(task, field, value) {
   return [baseTooltip, criteriaTooltip].filter(Boolean).join("\n\n");
 }
 
-function deriveWann(handlungsdruck, bearbeitbarkeit) {
-  if (handlungsdruck === CRITERIA_PLACEHOLDER || bearbeitbarkeit === CRITERIA_PLACEHOLDER) {
-    return CRITERIA_PLACEHOLDER;
-  }
-
+function deriveWann(handlungsdruck) {
+  if (handlungsdruck === CRITERIA_PLACEHOLDER) return CRITERIA_PLACEHOLDER;
   if (handlungsdruck === "hoch") return "sofort";
-  if (bearbeitbarkeit === "heute/als Nächstes") return "sofort";
-  if (bearbeitbarkeit === "planbar") return "Später";
+  if (handlungsdruck === "mittel") return "Später";
   return "Irgendwann";
 }
 
@@ -737,7 +643,7 @@ function derivePrio(risiko, impact) {
 }
 
 function hasCompleteWannCriteria(task) {
-  return HANDLUNGSDRUCK_OPTIONS.includes(task.handlungsdruck) && BEARBEITBARKEIT_OPTIONS.includes(task.bearbeitbarkeit);
+  return HANDLUNGSDRUCK_OPTIONS.includes(task.handlungsdruck);
 }
 
 function hasCompletePrioCriteria(task) {
@@ -747,7 +653,7 @@ function hasCompletePrioCriteria(task) {
 function syncDerivedCriteriaValues(task) {
   const next = { ...task };
   if (hasCompleteWannCriteria(next)) {
-    next.wann = deriveWann(next.handlungsdruck, next.bearbeitbarkeit);
+    next.wann = deriveWann(next.handlungsdruck);
   }
   if (hasCompletePrioCriteria(next)) {
     next.prio = derivePrio(next.risiko, next.impact);
@@ -757,7 +663,7 @@ function syncDerivedCriteriaValues(task) {
 
 function inferWannCriteria(wann) {
   if (wann === "klären" || wann === CRITERIA_PLACEHOLDER) {
-    return { handlungsdruck: CRITERIA_PLACEHOLDER, bearbeitbarkeit: CRITERIA_PLACEHOLDER };
+    return { handlungsdruck: CRITERIA_PLACEHOLDER };
   }
 
   if (wann === "Privat") {
@@ -765,14 +671,14 @@ function inferWannCriteria(wann) {
   }
 
   if (wann === "sofort" || wann === "Sofort" || wann === "Jetzt") {
-    return { handlungsdruck: "hoch", bearbeitbarkeit: "heute/als Nächstes" };
+    return { handlungsdruck: "hoch" };
   }
 
   if (wann === "Irgendwann") {
-    return { handlungsdruck: "niedrig", bearbeitbarkeit: "unklar" };
+    return { handlungsdruck: "niedrig" };
   }
 
-  return { handlungsdruck: "mittel", bearbeitbarkeit: "planbar" };
+  return { handlungsdruck: "mittel" };
 }
 
 function inferPrioCriteria(prio) {
@@ -801,9 +707,8 @@ function isStarted(task) {
   return task.googleStatus === "Gestartet";
 }
 
-function getKanbanColumnKey(task, masterDispatcherName = DEFAULT_MASTER_DISPATCHER) {
+function getKanbanColumnKey(task) {
   if (getEffectiveWann(task.wann) === "klären") return "clarify";
-  if (getActionStatus(task, masterDispatcherName) === "delegieren") return "dispatch";
   return isStarted(task) ? "started" : "open";
 }
 
@@ -851,21 +756,6 @@ function normalizeDateValue(value) {
   return `${year}-${month}-${day}`;
 }
 
-function normalizeFollowUpDate(value, dueValue) {
-  return clampFollowUpDateToDueDate(normalizeDateValue(value), normalizeDateValue(dueValue));
-}
-
-function getFollowUpDateLimitHint(dueValue) {
-  const dueDate = normalizeDateValue(dueValue);
-  if (!dueDate) return "";
-  return `Follow-up cannot be after Due: ${formatDate(dueDate)}.`;
-}
-
-function getRelevantFollowUpDate(task, masterDispatcherName = DEFAULT_MASTER_DISPATCHER) {
-  return isExternalAssignee(task?.bearbeiter, masterDispatcherName)
-    ? normalizeFollowUpDate(task?.followUpDate, task?.faellig)
-    : "";
-}
 function getDateDayTime(value) {
   const normalized = normalizeDateValue(value);
   return normalized ? new Date(`${normalized}T00:00:00`).getTime() : null;
@@ -1070,27 +960,22 @@ function getTaskDependencyText(taskIds, tasksById) {
     .join(", ");
 }
 
-function getTaskFilterCache(task, tasksById, childIdsByParent, masterDispatcherName) {
+function getTaskFilterCache(task, tasksById, childIdsByParent) {
   const tagText = getTaskTagText(task);
   const predecessorText = getTaskDependencyText(getPredecessorIds(task), tasksById);
   const successorText = getTaskDependencyText(childIdsByParent.get(task.id) || [], tasksById);
   const commentText = getTaskCommentText(task);
   const subtaskText = getTaskSubtaskText(task);
-  const actionStatus = getActionStatus(task, masterDispatcherName);
   const formattedStartDate = formatDate(task.startdatum);
   const formattedDueDate = formatDate(task.faellig);
-  const relevantFollowUpDate = getRelevantFollowUpDate(task, masterDispatcherName);
-  const formattedFollowUpDate = formatDate(relevantFollowUpDate);
   const formattedCompletedAt = formatDate(task.completedAt);
   const formattedDeletedAt = formatDate(task.deletedAt);
 
   return {
-    actionStatus,
     commentText,
     formattedCompletedAt,
     formattedDeletedAt,
     formattedDueDate,
-    formattedFollowUpDate,
     formattedStartDate,
     predecessorText,
     subtaskText,
@@ -1103,10 +988,6 @@ function getTaskFilterCache(task, tasksById, childIdsByParent, masterDispatcherN
       commentText,
       subtaskText,
       tagText,
-      task.bearbeiter,
-      actionStatus,
-      relevantFollowUpDate,
-      formattedFollowUpDate,
       getEffectiveWann(task.wann),
       getEffectivePrio(task.prio),
       getDisplayStatus(task),
@@ -1120,14 +1001,11 @@ function getTaskFilterCache(task, tasksById, childIdsByParent, masterDispatcherN
   };
 }
 
-function sortTasksWithFilters(tasks, columnFilters, masterDispatcherName, tasksById = new Map(), childIdsByParent = new Map()) {
+function sortTasksWithFilters(tasks, columnFilters, tasksById = new Map(), childIdsByParent = new Map()) {
   const sorters = [
     { field: "taskCodeSort", getValue: (task) => task.taskCode },
     { field: "wannSort", getValue: (task) => WANN_ORDER[getEffectiveWann(task.wann)] ?? 99 },
     { field: "prioSort", getValue: (task) => PRIO_ORDER[getEffectivePrio(task.prio)] ?? 99 },
-    { field: "bearbeiterSort", getValue: (task) => task.bearbeiter },
-    { field: "actionStatusSort", getValue: (task) => getActionStatus(task, masterDispatcherName) },
-    { field: "followUpDateSort", getValue: (task) => getRelevantFollowUpDate(task, masterDispatcherName), type: "date" },
     { field: "tagSort", getValue: (task) => getTaskTagText(task) },
     { field: "taskSort", getValue: (task) => task.task },
     { field: "beschreibungSort", getValue: (task) => `${task.beschreibung} ${getTaskCommentText(task)}` },
@@ -1219,7 +1097,6 @@ function truncateText(value, maxLength) {
 function normalizeEditableFieldValue(field, value) {
   if (field === "task") return truncateText(value, TEXT_LIMITS.task.max);
   if (field === "beschreibung") return truncateText(value, TEXT_LIMITS.description.max);
-  if (field === "bearbeiter") return truncateText(value, TEXT_LIMITS.assignee.max);
   if (field === "tags") return normalizeTags(value);
   return value;
 }
@@ -1465,13 +1342,11 @@ function prepareTaskList(tasks) {
 }
 
 function normalizeTask(task) {
-  const dispatchStatus = DISPATCH_STATUS_OPTIONS.includes(task.dispatchStatus) ? task.dispatchStatus : "delegieren";
-  const baseGoogleStatus = GOOGLE_STATUS_OPTIONS.includes(task.googleStatus)
+  const googleStatus = GOOGLE_STATUS_OPTIONS.includes(task.googleStatus)
     ? task.googleStatus
     : task.status === "Erledigt"
       ? "Erledigt"
       : "Offen";
-  const googleStatus = dispatchStatus === "zugeteilt" && baseGoogleStatus === "Offen" ? "Gestartet" : baseGoogleStatus;
   const wann =
     task.wann === "Jetzt" || task.wann === "Sofort" || task.wann === "WIP"
       ? "sofort"
@@ -1487,23 +1362,16 @@ function normalizeTask(task) {
   const handlungsdruck = HANDLUNGSDRUCK_OPTIONS.includes(task.handlungsdruck)
     ? task.handlungsdruck
     : inferredWannCriteria?.handlungsdruck || CRITERIA_PLACEHOLDER;
-  const bearbeitbarkeit = BEARBEITBARKEIT_OPTIONS.includes(task.bearbeitbarkeit)
-    ? task.bearbeitbarkeit
-    : inferredWannCriteria?.bearbeitbarkeit || CRITERIA_PLACEHOLDER;
   const risiko = RISIKO_OPTIONS.includes(task.risiko) ? task.risiko : inferredPrioCriteria.risiko;
   const impact = IMPACT_OPTIONS.includes(task.impact) ? task.impact : inferredPrioCriteria.impact;
 
   return syncDerivedCriteriaValues({
     id: task.id || crypto.randomUUID(),
     handlungsdruck,
-    bearbeitbarkeit,
     risiko,
     impact,
     wann,
     prio,
-    bearbeiter: truncateText(normalizeText(task.bearbeiter), TEXT_LIMITS.assignee.max) || "bestimmen",
-    dispatchStatus,
-    followUpDate: normalizeFollowUpDate(task.followUpDate ?? task.follow_up_date, task.faellig),
     taskCode: normalizeText(task.taskCode),
     dependsOnTaskIds: normalizeTaskIds(task.dependsOnTaskIds?.length ? task.dependsOnTaskIds : task.dependsOnTaskId),
     dependsOnTaskId: normalizeTaskIds(task.dependsOnTaskIds?.length ? task.dependsOnTaskIds : task.dependsOnTaskId)[0] || "",
@@ -1534,14 +1402,10 @@ function taskToRow(task, userId) {
     user_id: userId,
     task_code: task.taskCode,
     handlungsdruck: task.handlungsdruck,
-    bearbeitbarkeit: task.bearbeitbarkeit,
     risiko: task.risiko,
     impact: task.impact,
     wann: task.wann,
     prio: task.prio,
-    bearbeiter: task.bearbeiter,
-    dispatch_status: task.dispatchStatus,
-    follow_up_date: task.followUpDate || null,
     depends_on_task_id: getPredecessorIds(task)[0] || null,
     depends_on_task_ids: getPredecessorIds(task),
     task: task.task,
@@ -1563,14 +1427,10 @@ function rowToTask(row) {
     id: row.id,
     taskCode: row.task_code,
     handlungsdruck: row.handlungsdruck,
-    bearbeitbarkeit: row.bearbeitbarkeit,
     risiko: row.risiko,
     impact: row.impact,
     wann: row.wann,
     prio: row.prio,
-    bearbeiter: row.bearbeiter,
-    dispatchStatus: row.dispatch_status || "delegieren",
-    followUpDate: row.follow_up_date || "",
     dependsOnTaskIds: normalizeTaskIds(row.depends_on_task_ids?.length ? row.depends_on_task_ids : row.depends_on_task_id),
     dependsOnTaskId: normalizeTaskIds(row.depends_on_task_ids?.length ? row.depends_on_task_ids : row.depends_on_task_id)[0] || "",
     task: row.task,
@@ -1706,17 +1566,13 @@ async function saveRemoteTasks(tasks, userId) {
   const rowsWithoutDeletedAt = rows.map(({ deleted_at: _deletedAt, ...row }) => row);
   const rowsWithoutComments = rows.map(({ comments: _comments, ...row }) => row);
   const rowsWithoutCreatedAt = rows.map(({ created_at: _createdAt, ...row }) => row);
-  const rowsWithoutDispatchStatus = rows.map(({ dispatch_status: _dispatchStatus, ...row }) => row);
-  const rowsWithoutFollowUpDate = rows.map(({ follow_up_date: _followUpDate, ...row }) => row);
-  const legacyRows = rows.map(({ depends_on_task_ids: _dependsOnTaskIds, subtasks: _subtasks, completed_at: _completedAt, tags: _tags, deleted_at: _deletedAt, comments: _comments, created_at: _createdAt, dispatch_status: _dispatchStatus, follow_up_date: _followUpDate, ...row }) => row);
+  const legacyRows = rows.map(({ depends_on_task_ids: _dependsOnTaskIds, subtasks: _subtasks, completed_at: _completedAt, tags: _tags, deleted_at: _deletedAt, comments: _comments, created_at: _createdAt, ...row }) => row);
   const hasSubtaskData = rows.some(row => normalizeSubtasks(row.subtasks).length > 0);
   const hasMultiPredecessorData = rows.some(row => normalizeTaskIds(row.depends_on_task_ids).length > 1);
   const hasCompletedAtData = rows.some(row => row.completed_at);
   const hasTagData = rows.some(row => normalizeTags(row.tags).length > 0);
   const hasDeletedAtData = rows.some(row => row.deleted_at);
   const hasCommentData = rows.some(row => normalizeComments(row.comments).length > 0);
-  const hasDispatchStatusData = rows.some(row => row.dispatch_status === "zugeteilt");
-  const hasFollowUpDateData = rows.some(row => row.follow_up_date);
   const { data: existingRows, error: selectError } = await supabase
     .from("tasks")
     .select("id")
@@ -1737,24 +1593,6 @@ async function saveRemoteTasks(tasks, userId) {
     const { error: upsertError } = await supabase.from("tasks").upsert(rows);
     if (upsertError) {
       const upsertMessage = String(upsertError.message || "").toLowerCase();
-      if (hasDispatchStatusData && upsertMessage.includes("dispatch_status")) {
-        throw new Error("The Supabase schema must first be extended with dispatch_status, otherwise assignment state would be lost.");
-      }
-
-      if (!hasDispatchStatusData) {
-        const { error: noDispatchStatusUpsertError } = await supabase.from("tasks").upsert(rowsWithoutDispatchStatus);
-        if (!noDispatchStatusUpsertError) return;
-      }
-
-      if (hasFollowUpDateData && upsertMessage.includes("follow_up_date")) {
-        throw new Error("The Supabase schema must first be extended with follow_up_date, otherwise delegation follow-ups would be lost.");
-      }
-
-      if (!hasFollowUpDateData) {
-        const { error: noFollowUpDateUpsertError } = await supabase.from("tasks").upsert(rowsWithoutFollowUpDate);
-        if (!noFollowUpDateUpsertError) return;
-      }
-
       if (!hasMultiPredecessorData) {
         const { error: noMultiDependsUpsertError } = await supabase.from("tasks").upsert(rowsWithoutMultiDepends);
         if (!noMultiDependsUpsertError) return;
@@ -1819,7 +1657,7 @@ async function saveRemoteTasks(tasks, userId) {
 async function loadRemoteUserSettings(userId) {
   const { data, error } = await supabase
     .from("user_settings")
-    .select("selected_tag_tabs, available_tags, browser_compact_view, master_dispatcher_name, tooltips_enabled")
+    .select("selected_tag_tabs, available_tags, browser_compact_view, tooltips_enabled")
     .eq("user_id", userId)
     .maybeSingle();
 
@@ -1837,7 +1675,6 @@ async function loadRemoteUserSettings(userId) {
         selectedTagTabs: normalizeTags(legacyData?.selected_tag_tabs, 0),
         tagCatalog: normalizeTagCatalog(legacyData?.available_tags),
         browserCompactView: null,
-        masterDispatcherName: null,
         tooltipsEnabled: null,
         darkModeSettings: null,
         editSectionDefaults: null,
@@ -1933,7 +1770,6 @@ async function loadRemoteUserSettings(userId) {
     selectedTagTabs: normalizeTags(data?.selected_tag_tabs, 0),
     tagCatalog: normalizeTagCatalog(data?.available_tags),
     browserCompactView: data?.browser_compact_view ?? null,
-    masterDispatcherName: normalizeText(data?.master_dispatcher_name) || null,
     tooltipsEnabled: data?.tooltips_enabled ?? null,
     darkModeSettings: legacyDarkMode === null && browserDarkMode === null && mobileDarkMode === null
       ? null
@@ -1975,7 +1811,6 @@ async function loadOptionalUserSettingBoolean(userId, columnName) {
 function isMissingUserSettingsColumnError(message) {
   return [
     "browser_compact_view",
-    "master_dispatcher_name",
     "tooltips_enabled",
   ].some(columnName => message.includes(columnName));
 }
@@ -1990,7 +1825,7 @@ async function updateOptionalUserSettingColumns(userId, values, missingColumnNam
   if (!missingColumnNames.some(columnName => message.includes(columnName))) throw error;
 }
 
-async function saveRemoteUserSettings(userId, selectedTagTabs, tagCatalog, browserCompactView, masterDispatcherName, tooltipsEnabled, darkModeSettings, editSectionDefaults, tabLayout, cardBadgeColumns, defaultViewModes, defaultStartTabs, kanbanColumnKeys, upcomingBadgeDefaults) {
+async function saveRemoteUserSettings(userId, selectedTagTabs, tagCatalog, browserCompactView, tooltipsEnabled, darkModeSettings, editSectionDefaults, tabLayout, cardBadgeColumns, defaultViewModes, defaultStartTabs, kanbanColumnKeys, upcomingBadgeDefaults) {
   const normalizedDarkModeSettings = normalizeDarkModeSettings(darkModeSettings);
   const { error } = await supabase
     .from("user_settings")
@@ -1999,7 +1834,6 @@ async function saveRemoteUserSettings(userId, selectedTagTabs, tagCatalog, brows
       selected_tag_tabs: normalizeTags(selectedTagTabs, 0),
       available_tags: normalizeTagCatalog(tagCatalog),
       browser_compact_view: Boolean(browserCompactView),
-      master_dispatcher_name: truncateText(normalizeText(masterDispatcherName), TEXT_LIMITS.assignee.max) || DEFAULT_MASTER_DISPATCHER,
       tooltips_enabled: Boolean(tooltipsEnabled),
     });
 
@@ -2097,15 +1931,6 @@ async function removeAllowedUserEmail(email) {
     .eq("email", normalizedEmail);
 
   if (error) throw error;
-}
-
-function loadMasterDispatcherName() {
-  try {
-    const saved = localStorage.getItem(MASTER_DISPATCHER_STORAGE_KEY);
-    return saved?.trim() || DEFAULT_MASTER_DISPATCHER;
-  } catch {
-    return DEFAULT_MASTER_DISPATCHER;
-  }
 }
 
 function loadBrowserCompactView() {
@@ -2356,10 +2181,6 @@ function saveLocalTasks(tasks) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(pruneExpiredDeletedTasks(tasks)));
 }
 
-function saveMasterDispatcherName(name) {
-  localStorage.setItem(MASTER_DISPATCHER_STORAGE_KEY, name.trim() || DEFAULT_MASTER_DISPATCHER);
-}
-
 function saveBrowserCompactView(isCompact) {
   try {
     localStorage.setItem(BROWSER_COMPACT_VIEW_STORAGE_KEY, isCompact ? "true" : "false");
@@ -2586,7 +2407,6 @@ function getTaskShareText(task) {
     `When: ${getDisplayValue(getEffectiveWann(task.wann))}`,
     `Prio: ${getDisplayValue(getEffectivePrio(task.prio))}`,
     `Status: ${getDisplayValue(getDisplayStatus(task))}`,
-    normalizeText(task.bearbeiter) ? `Assignee: ${task.bearbeiter}` : "",
     task.faellig ? `Due: ${formatDate(task.faellig)}` : "",
     task.completedAt ? `Done on: ${formatDate(task.completedAt)}` : ""
   ].filter(Boolean).join("\n");
@@ -2947,46 +2767,20 @@ function includesFilter(value, filter) {
   return String(value || "").toLowerCase().includes(normalizedFilter);
 }
 
-function matchesAssigneeFilter(task, filter, masterDispatcherName = DEFAULT_MASTER_DISPATCHER) {
-  if (filter === OTHER_ASSIGNEES_FILTER) return isExternalAssignee(task.bearbeiter, masterDispatcherName);
-  return includesFilter(task.bearbeiter, filter);
-}
-
-function applyCriteriaChange(task, field, value, masterDispatcherName = DEFAULT_MASTER_DISPATCHER) {
+function applyCriteriaChange(task, field, value) {
   const nextValue = normalizeEditableFieldValue(field, value);
   const wasStarted = task?.googleStatus === "Gestartet";
   const next = field === "googleStatus" && value === "Gelöscht"
     ? { ...task, googleStatus: task.googleStatus === "Erledigt" ? "Erledigt" : "Offen", deletedAt: normalizeDateValue(task.deletedAt) || getTodayDateValue() }
     : { ...task, [field]: nextValue };
 
-  if (field === "bearbeiter") {
-    if (next.dispatchStatus === "zugeteilt" && next.googleStatus === "Gestartet") {
-      next.googleStatus = "Offen";
-    }
-    next.dispatchStatus = "delegieren";
-  }
-
-  if (field === "dispatchStatus" && nextValue === "zugeteilt" && next.googleStatus === "Offen") {
-    next.googleStatus = "Gestartet";
-  }
-
-  if (field === "dispatchStatus" && nextValue === "delegieren" && next.googleStatus === "Gestartet") {
-    next.googleStatus = "Offen";
-  }
-
   if (field === "googleStatus") {
     if (value !== "Gelöscht") next.deletedAt = "";
     next.completedAt = value === "Erledigt" ? normalizeDateValue(next.completedAt) || getTodayDateValue() : "";
   }
 
-  if (field === "handlungsdruck" || field === "bearbeitbarkeit") {
-    next.wann = deriveWann(next.handlungsdruck, next.bearbeitbarkeit);
-  }
-
-  if (field === "bearbeitbarkeit" && nextValue === BEARBEITBARKEIT_OPTIONS[0]) {
-    const today = getTodayDateValue();
-    next.startdatum = today;
-    next.faellig = today;
+  if (field === "handlungsdruck") {
+    next.wann = deriveWann(next.handlungsdruck);
   }
 
   if (field === "risiko" || field === "impact") {
@@ -2997,7 +2791,6 @@ function applyCriteriaChange(task, field, value, masterDispatcherName = DEFAULT_
     next.startdatum = getTodayDateValue();
   }
 
-  next.followUpDate = getRelevantFollowUpDate(next, masterDispatcherName);
   return next;
 }
 
@@ -3161,14 +2954,10 @@ function getEditableTaskSnapshot(task) {
   if (!task) return null;
   return {
     handlungsdruck: task.handlungsdruck,
-    bearbeitbarkeit: task.bearbeitbarkeit,
     risiko: task.risiko,
     impact: task.impact,
     wann: task.wann,
     prio: task.prio,
-    bearbeiter: task.bearbeiter,
-    dispatchStatus: task.dispatchStatus,
-    followUpDate: normalizeDateValue(task.followUpDate),
     task: normalizeText(task.task),
     beschreibung: normalizeText(task.beschreibung),
     comments: normalizeComments(task.comments),
@@ -3342,7 +3131,6 @@ function csvToTasks(text) {
 
 export default function App() {
   const [tasks, setTasks] = useState(loadLocalTasks);
-  const [masterDispatcherName, setMasterDispatcherName] = useState(loadMasterDispatcherName);
   const [isBrowserCompactView, setIsBrowserCompactView] = useState(loadBrowserCompactView);
   const hadDefaultViewModePreferenceOnStartRef = useRef(hasDefaultViewModePreference());
   const initialIsMobileViewport = isMobileViewportNow();
@@ -3519,9 +3307,6 @@ export default function App() {
     showTaskDetails(task, { highlight: true, scroll: true, preserveView: false, forceListView: true });
   }, [isLoaded, isCurrentUserAllowed, tasks, activeSelectedTagTabs, defaultStartTabs, defaultViewModes]);
 
-  useEffect(() => {
-    saveMasterDispatcherName(masterDispatcherName);
-  }, [masterDispatcherName]);
 
   useEffect(() => {
     saveBrowserCompactView(isBrowserCompactView);
@@ -3609,7 +3394,6 @@ export default function App() {
         selectedTagTabs,
         tagCatalog,
         isBrowserCompactView,
-        masterDispatcherName,
         areTooltipsEnabled,
         darkModeSettings,
         editSectionDefaults,
@@ -3625,7 +3409,7 @@ export default function App() {
     }, 400);
 
     return () => window.clearTimeout(syncSettingsTimeout);
-  }, [selectedTagTabs, tagCatalog, visibleTabLayout, activeSelectedTagTabs, isBrowserCompactView, masterDispatcherName, areTooltipsEnabled, darkModeSettings, editSectionDefaults, cardBadgeColumns, defaultViewModes, defaultStartTabs, kanbanColumnKeys, upcomingBadgeDefaults, isSettingsLoaded, session, isCurrentUserAllowed]);
+  }, [selectedTagTabs, tagCatalog, visibleTabLayout, activeSelectedTagTabs, isBrowserCompactView, areTooltipsEnabled, darkModeSettings, editSectionDefaults, cardBadgeColumns, defaultViewModes, defaultStartTabs, kanbanColumnKeys, upcomingBadgeDefaults, isSettingsLoaded, session, isCurrentUserAllowed]);
 
   useEffect(() => {
     if (!isLoaded || !isCurrentUserAllowed) return;
@@ -3764,9 +3548,6 @@ export default function App() {
           setTagCatalog(remoteSettings.tagCatalog);
           if (remoteSettings.browserCompactView !== null) {
             setIsBrowserCompactView(Boolean(remoteSettings.browserCompactView));
-          }
-          if (remoteSettings.masterDispatcherName !== null) {
-            setMasterDispatcherName(truncateText(remoteSettings.masterDispatcherName, TEXT_LIMITS.assignee.max));
           }
           if (remoteSettings.tooltipsEnabled !== null) {
             setAreTooltipsEnabled(Boolean(remoteSettings.tooltipsEnabled));
@@ -3939,26 +3720,23 @@ export default function App() {
   const taskFilterCacheById = useMemo(() => {
     const cacheById = new Map();
     tasks.forEach(task => {
-      cacheById.set(task.id, getTaskFilterCache(task, tasksById, childIdsByParent, masterDispatcherName));
+      cacheById.set(task.id, getTaskFilterCache(task, tasksById, childIdsByParent));
     });
     return cacheById;
-  }, [tasks, tasksById, childIdsByParent, masterDispatcherName]);
+  }, [tasks, tasksById, childIdsByParent]);
 
   const visibleTasks = useMemo(() => {
     const sortedTasks = activeAppTab === NEWEST_TAB
       ? sortTasksByCreatedAt(tasks)
-      : sortTasksWithFilters(tasks, columnFilters, masterDispatcherName, tasksById, childIdsByParent);
+      : sortTasksWithFilters(tasks, columnFilters, tasksById, childIdsByParent);
     return sortedTasks.filter(task => {
-      const cache = taskFilterCacheById.get(task.id) || getTaskFilterCache(task, tasksById, childIdsByParent, masterDispatcherName);
-      const actionStatus = cache.actionStatus;
+      const cache = taskFilterCacheById.get(task.id) || getTaskFilterCache(task, tasksById, childIdsByParent);
       const matchesWann =
         columnFilters.wann === "Alle" || getEffectiveWann(task.wann) === columnFilters.wann;
       const matchesPrio =
         columnFilters.prio === "Alle" || getEffectivePrio(task.prio) === columnFilters.prio;
-      const matchesActionStatus =
-        columnFilters.actionStatus === "Alle" || actionStatus === columnFilters.actionStatus;
       const matchesViewStatus = activeAppTab === REVIEW_TAB
-        ? shouldShowInReview(task, { masterDispatcherName })
+        ? shouldShowInReview(task)
         : activeAppTab === DONE_TAB
         ? isDone(task)
         : activeAppTab === DELETED_TAB
@@ -3973,7 +3751,6 @@ export default function App() {
       const matchesTagFilter = columnFilters.tagFilter === "-"
         ? !tagText
         : includesFilter(tagText, columnFilters.tagFilter);
-      const matchesFollowUpDate = includesFilter(cache.formattedFollowUpDate, columnFilters.followUpDate);
       const predecessorText = cache.predecessorText;
       const successorText = cache.successorText;
       if (isOverviewSearchActive) {
@@ -3989,9 +3766,6 @@ export default function App() {
         includesFilter(task.taskCode, columnFilters.taskCode) &&
         matchesWann &&
         matchesPrio &&
-        matchesAssigneeFilter(task, columnFilters.bearbeiter, masterDispatcherName) &&
-        matchesActionStatus &&
-        matchesFollowUpDate &&
         matchesDueStatus &&
         matchesTagFilter &&
         includesFilter(task.task, columnFilters.task) &&
@@ -4008,7 +3782,7 @@ export default function App() {
         matchesDeletedScope
       );
     });
-  }, [tasks, columnFilters, isOverviewSearchActive, masterDispatcherName, activeTagScope, activeAppTab, tasksById, childIdsByParent, taskFilterCacheById]);
+  }, [tasks, columnFilters, isOverviewSearchActive, activeTagScope, activeAppTab, tasksById, childIdsByParent, taskFilterCacheById]);
 
   const visibleTasksWithEditingTask = useMemo(() => {
     if (!editingId) return visibleTasks;
@@ -4036,14 +3810,14 @@ export default function App() {
   const kanbanColumnGroups = useMemo(() => {
     const tasksByColumn = new Map(visibleKanbanColumns.map(column => [column.key, []]));
     sortTasks(taskCardsToRender).forEach(task => {
-      const columnKey = getKanbanColumnKey(task, masterDispatcherName);
+      const columnKey = getKanbanColumnKey(task);
       tasksByColumn.get(columnKey)?.push(task);
     });
     return visibleKanbanColumns.map(column => ({
       ...column,
       tasks: tasksByColumn.get(column.key) || []
     }));
-  }, [taskCardsToRender, visibleKanbanColumns, masterDispatcherName]);
+  }, [taskCardsToRender, visibleKanbanColumns]);
   const kanbanScrollWidth = (kanbanColumnGroups.length * kanbanColumnWidth) + (Math.max(0, kanbanColumnGroups.length - 1) * 12);
 
   const updateKanbanScrollHint = useCallback(() => {
@@ -4177,7 +3951,7 @@ export default function App() {
         return;
       }
 
-      if (shouldShowInReview(task, { masterDispatcherName })) nextCounts.review += 1;
+      if (shouldShowInReview(task)) nextCounts.review += 1;
       if (task.googleStatus === "Offen") nextCounts.open += 1;
       if (task.googleStatus === "Gestartet") nextCounts.started += 1;
       if (!done) nextCounts.newest += 1;
@@ -4197,7 +3971,7 @@ export default function App() {
     });
 
     return { counts: nextCounts, tagTabCounts: tagCounts };
-  }, [tasks, masterDispatcherName]);
+  }, [tasks]);
 
   const counts = taskSummary.counts;
   const tagTabCounts = taskSummary.tagTabCounts;
@@ -4209,11 +3983,11 @@ export default function App() {
       open: activeScopedTasks.filter(task => task.googleStatus === "Offen").length,
       started: activeScopedTasks.filter(task => task.googleStatus === "Gestartet").length,
       newest: activeScopedTasks.filter(task => !isDone(task)).length,
-      review: activeScopedTasks.filter(task => shouldShowInReview(task, { masterDispatcherName })).length,
+      review: activeScopedTasks.filter(task => shouldShowInReview(task)).length,
       done: activeScopedTasks.filter(isDone).length,
       deleted: scopedTasks.filter(isDeleted).length
     };
-  }, [tasks, activeTagScope, masterDispatcherName]);
+  }, [tasks, activeTagScope]);
   const scopedDueCounts = useMemo(() => {
     const scopedTasks = tasks.filter(task => {
       if (activeTagScope !== "all" && !hasTag(task, activeTagScope)) return false;
@@ -4226,18 +4000,8 @@ export default function App() {
     };
   }, [tasks, activeTagScope, activeAppTab]);
 
-  const reviewSummary = useMemo(() => getTaskReviewSummary(tasks, { masterDispatcherName }), [tasks, masterDispatcherName]);
-  const reviewTasks = useMemo(() => tasks.filter(task => shouldShowInReview(task, { masterDispatcherName })), [tasks, masterDispatcherName]);
-
-  const bearbeiterOptions = useMemo(() => {
-    const values = tasks
-      .map(task => task.bearbeiter)
-      .filter(Boolean)
-      .map(value => String(value).trim())
-      .filter(Boolean);
-
-    return sortAssigneeOptions(Array.from(new Set([...BASE_BEARBEITER_OPTIONS, ...values])));
-  }, [tasks]);
+  const reviewSummary = useMemo(() => getTaskReviewSummary(tasks), [tasks]);
+  const reviewTasks = useMemo(() => tasks.filter(task => shouldShowInReview(task)), [tasks]);
 
   const dependencyOptions = useMemo(() => getTaskOptions(tasks), [tasks]);
   const taskCodeOptions = useMemo(() => sortTasks(tasks).map(task => task.taskCode).filter(Boolean), [tasks]);
@@ -4265,9 +4029,6 @@ export default function App() {
       taskCode: "ID",
       wann: "When",
       prio: "Prio",
-      bearbeiter: "Assignee",
-      actionStatus: "Action",
-      followUpDate: "Follow-up",
       tagFilter: "Tag",
       task: "Task",
       beschreibung: "Description",
@@ -4282,9 +4043,6 @@ export default function App() {
       deletedAt: "Deleted on",
       wannSort: "When sorted",
       prioSort: "Priority sorted",
-      bearbeiterSort: "Assignee sorted",
-      actionStatusSort: "Action sorted",
-      followUpDateSort: "Follow-up sorted",
       tagSort: "Tag sorted",
       taskSort: "Task sorted",
       beschreibungSort: "Description sorted",
@@ -4298,7 +4056,6 @@ export default function App() {
       deletedAtSort: "Deleted sorted"
     };
     function formatFilterValue(key, value) {
-      if (key === "bearbeiter" && value === OTHER_ASSIGNEES_FILTER) return "all others";
       if (key === "tagFilter" && value === "-") return "No tag";
       return getDisplayValue(value);
     }
@@ -4353,8 +4110,6 @@ export default function App() {
       relation: getTaskRelation(task, childIdsByParent, tasksById),
       dependencyOptions: getTaskOptions(tasks, task.id),
       tagOptions,
-      bearbeiterOptions,
-      masterDispatcherName,
       onStartEdit: startEdit,
       onCancelEdit: cancelEditWithPrompt,
       onSaveEdit: saveEdit,
@@ -4398,13 +4153,13 @@ export default function App() {
     setCaptureMessage("");
     setActionMessage("");
     if (field === "tags") activateTagTabs(value);
-    setDraft(current => applyCriteriaChange(current, field, value, masterDispatcherName));
+    setDraft(current => applyCriteriaChange(current, field, value));
   }
 
   function updateEditDraft(field, value) {
     if (field === "tags") activateTagTabs(value);
     lastEditDraftFieldRef.current = field;
-    const nextDraft = applyCriteriaChange(editDraftRef.current || editDraft, field, value, masterDispatcherName);
+    const nextDraft = applyCriteriaChange(editDraftRef.current || editDraft, field, value);
     editDraftRef.current = nextDraft;
     setEditDraft(nextDraft);
   }
@@ -4938,7 +4693,7 @@ export default function App() {
   function saveEditField(field, value) {
     const currentDraft = editDraftRef.current || editDraft;
     if (!currentDraft) return false;
-    const nextDraft = applyCriteriaChange(currentDraft, field, value, masterDispatcherName);
+    const nextDraft = applyCriteriaChange(currentDraft, field, value);
     editDraftRef.current = nextDraft;
     setEditDraft(nextDraft);
     return saveEdit({ keepEditing: true, draftOverride: nextDraft, includeLocalDrafts: false });
@@ -5095,7 +4850,7 @@ export default function App() {
     if (!targetTask) return;
     if (isDeleted(targetTask) && field !== "googleStatus") return;
 
-    const nextTask = normalizeTask(applyCriteriaChange(targetTask, field, value, masterDispatcherName));
+    const nextTask = normalizeTask(applyCriteriaChange(targetTask, field, value));
     const isCompletingTask = !isDone(targetTask) && isDone(nextTask);
     const subtaskDateMessage = getSubtaskDateValidationMessage(nextTask);
     if (subtaskDateMessage) {
@@ -5133,7 +4888,7 @@ export default function App() {
       return;
     }
 
-    if (!isCompletingTask && (field === "googleStatus" || field === "tags" || field === "dispatchStatus") && !isTaskInActiveViewScope(nextTask)) {
+    if (!isCompletingTask && (field === "googleStatus" || field === "tags") && !isTaskInActiveViewScope(nextTask)) {
       showTaskView(nextTask);
     }
   }
@@ -5377,20 +5132,6 @@ export default function App() {
       <button type="button" className="iconButton popupCloseButton" onClick={() => setIsActionMenuOpen(false)} title="Close">
         <X size={16} />
       </button>
-      <div className="actionMenuRow masterDispatcherRow">
-        <label className="menuSetting" title="Name treated as Master Dispatcher. Tasks assigned to this name count as self-owned.">
-          <span>Master Dispatcher</span>
-          <input
-            value={masterDispatcherName}
-            onChange={event => setMasterDispatcherName(truncateText(event.target.value, TEXT_LIMITS.assignee.max))}
-            onBlur={() => setMasterDispatcherName(current => current.trim() || DEFAULT_MASTER_DISPATCHER)}
-            placeholder={DEFAULT_MASTER_DISPATCHER}
-            maxLength={TEXT_LIMITS.assignee.max}
-            title="Set Master Dispatcher name"
-          />
-          <InputGuidance value={masterDispatcherName} limits={TEXT_LIMITS.assignee} label="Master Dispatcher" />
-        </label>
-      </div>
       <div className="actionMenuRow settingsRow">
         <span className="menuGroupTitle">View</span>
         <label className="menuCheckbox" title="Switches the browser between compact cards and the wide table view.">
@@ -5569,7 +5310,7 @@ export default function App() {
         <span>Deleted</span>
         <span className="menuCount">{scopedStatusCounts.deleted}</span>
       </button>
-      <button type="button" className="secondaryButton menuIconButton menuReviewSummaryButton" onClick={openReviewSummary} title="Show daily/weekly close-out with done, started, open, overdue, and delegated tasks">
+      <button type="button" className="secondaryButton menuIconButton menuReviewSummaryButton" onClick={openReviewSummary} title="Show daily/weekly close-out with done, started, open, and overdue tasks">
         <FileText size={16} />
         <span>Close-out</span>
       </button>
@@ -5671,36 +5412,6 @@ export default function App() {
           ))}
         </select>
         <SortToggle value={columnFilters.prioSort} onChange={value => updateColumnFilter("prioSort", value)} ariaLabel="Sort Prio" />
-      </label>
-      <label>
-        <span>Assignee</span>
-        <select value={columnFilters.bearbeiter} onChange={event => updateColumnFilter("bearbeiter", event.target.value)}>
-          <option value="">All</option>
-          <option value={OTHER_ASSIGNEES_FILTER}>all others</option>
-          {bearbeiterOptions.map(option => (
-            <option key={option} value={option}>{getDisplayValue(option)}</option>
-          ))}
-        </select>
-        <SortToggle value={columnFilters.bearbeiterSort} onChange={value => updateColumnFilter("bearbeiterSort", value)} ariaLabel="Sort assignee" />
-      </label>
-      <label>
-        <span>Action</span>
-        <select value={columnFilters.actionStatus} onChange={event => updateColumnFilter("actionStatus", event.target.value)}>
-          <option value="Alle">All</option>
-          {ACTION_STATUS_OPTIONS.map(option => (
-            <option key={option} value={option}>{getDisplayValue(option)}</option>
-          ))}
-        </select>
-        <SortToggle value={columnFilters.actionStatusSort} onChange={value => updateColumnFilter("actionStatusSort", value)} ariaLabel="Sort action" />
-      </label>
-      <label>
-              <span>Follow-up</span>
-        <input
-          value={columnFilters.followUpDate}
-          onChange={event => updateColumnFilter("followUpDate", event.target.value)}
-          placeholder="All"
-        />
-        <SortToggle value={columnFilters.followUpDateSort} onChange={value => updateColumnFilter("followUpDateSort", value)} ariaLabel="Sort follow-up" />
       </label>
       <label>
         <span>Tag</span>
@@ -6150,16 +5861,6 @@ export default function App() {
               title={getTooltip("tags", normalizeTags(draft.tags)[0] || "-")}
             />
 
-            <div className="captureMobileOwnerField">
-              <AssigneeField
-                label="Assignee"
-                value={draft.bearbeiter}
-                options={bearbeiterOptions}
-                onChange={value => updateDraft("bearbeiter", value)}
-                title={getTooltip("bearbeiter", draft.bearbeiter)}
-              />
-            </div>
-
             <div className="formRow compact captureAdvancedFields">
               <SelectField
                 label="Urgency"
@@ -6167,14 +5868,6 @@ export default function App() {
                 options={HANDLUNGSDRUCK_OPTIONS}
                 onChange={value => updateDraft("handlungsdruck", value)}
                 title={getTooltip("handlungsdruck", draft.handlungsdruck)}
-                requiredChoice
-              />
-              <SelectField
-                label="Workability"
-                value={draft.bearbeitbarkeit}
-                options={BEARBEITBARKEIT_OPTIONS}
-                onChange={value => updateDraft("bearbeitbarkeit", value)}
-                title={getTooltip("bearbeitbarkeit", draft.bearbeitbarkeit)}
                 requiredChoice
               />
               <SelectField
@@ -6196,26 +5889,6 @@ export default function App() {
             </div>
 
             <div className="formRow compact captureAdvancedFields">
-              <AssigneeField
-                label="Assignee"
-                value={draft.bearbeiter}
-                options={bearbeiterOptions}
-                onChange={value => updateDraft("bearbeiter", value)}
-                title={getTooltip("bearbeiter", draft.bearbeiter)}
-              />
-              {isExternalAssignee(draft.bearbeiter, masterDispatcherName) && (
-                <label title={getTooltip("followUpDate", formatDate(draft.followUpDate) || "-")}>
-                  <span>Follow-up</span>
-                  <input
-                    type="date"
-                    value={draft.followUpDate}
-                    max={draft.faellig || undefined}
-                    onChange={event => updateDraft("followUpDate", event.target.value)}
-                    title={getTooltip("followUpDate", formatDate(draft.followUpDate) || "-")}
-                  />
-                  {getFollowUpDateLimitHint(draft.faellig) && <small className="fieldConstraintHint">{getFollowUpDateLimitHint(draft.faellig)}</small>}
-                </label>
-              )}
               <TaskMultiDependencyField
                 label="Predecessors"
                 values={draft.dependsOnTaskIds}
@@ -6283,9 +5956,6 @@ export default function App() {
                 <th>
                   <span className="helpLabel" title={PRIO_HELP}>Prio</span>
                 </th>
-                <th>Assignee</th>
-                <th>Action</th>
-                <th>Follow-up</th>
                 <th>Tag</th>
                 <th>Task</th>
                 <th>Description</th>
@@ -6336,38 +6006,6 @@ export default function App() {
                   <SortToggle value={columnFilters.prioSort} onChange={value => updateColumnFilter("prioSort", value)} ariaLabel="Sort Prio" />
                 </th>
                 <th>
-                  <select
-                    value={columnFilters.bearbeiter}
-                    onChange={event => updateColumnFilter("bearbeiter", event.target.value)}
-                  >
-                    <option value="">All</option>
-                    <option value={OTHER_ASSIGNEES_FILTER}>all others</option>
-                    {bearbeiterOptions.map(option => (
-                      <option key={option} value={option}>{getDisplayValue(option)}</option>
-                    ))}
-                  </select>
-                  <SortToggle value={columnFilters.bearbeiterSort} onChange={value => updateColumnFilter("bearbeiterSort", value)} ariaLabel="Sort assignee" />
-                </th>
-                <th>
-                  <select
-                    value={columnFilters.actionStatus}
-                    onChange={event => updateColumnFilter("actionStatus", event.target.value)}
-                  >
-                    <option value="Alle">All</option>
-                    {ACTION_STATUS_OPTIONS.map(option => (
-                      <option key={option} value={option}>{getDisplayValue(option)}</option>
-                    ))}
-                  </select>
-                  <SortToggle value={columnFilters.actionStatusSort} onChange={value => updateColumnFilter("actionStatusSort", value)} ariaLabel="Sort action" />
-                </th>
-                <th>
-                  <input
-                    value={columnFilters.followUpDate}
-                    onChange={event => updateColumnFilter("followUpDate", event.target.value)}
-                    placeholder="All"
-                  />
-                  <SortToggle value={columnFilters.followUpDateSort} onChange={value => updateColumnFilter("followUpDateSort", value)} ariaLabel="Sort follow-up" />
-                </th>                <th>
                   <select
                     value={columnFilters.tagFilter}
                     onChange={event => updateColumnFilter("tagFilter", event.target.value)}
@@ -6496,8 +6134,6 @@ export default function App() {
                   onToggleDone={toggleDone}
                   onShareTask={shareTask}
                   onQuickChange={updateTaskField}
-                  bearbeiterOptions={bearbeiterOptions}
-                  masterDispatcherName={masterDispatcherName}
                   predecessorTargets={getRelationTargets(getPredecessorIds(task), tasksById, "Predecessors")}
                   successorTargets={getRelationTargets(childIdsByParent.get(task.id) || [], tasksById, "Successors")}
                   dependencyOptions={getTaskOptions(tasks, task.id)}
@@ -6610,7 +6246,6 @@ export default function App() {
                 <span><strong>{reviewSummary.started}</strong><small>started</small></span>
                 <span><strong>{reviewSummary.open}</strong><small>still open</small></span>
                 <span><strong>{reviewSummary.overdue}</strong><small>overdue</small></span>
-                <span><strong>{reviewSummary.delegatedWithoutResponse}</strong><small>delegated without response</small></span>
               </div>
               <h3>Quick review today</h3>
               <ul className="reviewTaskList">
@@ -6621,7 +6256,7 @@ export default function App() {
                       {task.taskCode || "Task"}
                     </button>
                     <span>{task.task}</span>
-                    <small>{getTaskReviewReasons(task, { masterDispatcherName }).join(" · ")}</small>
+                    <small>{getTaskReviewReasons(task).join(" · ")}</small>
                   </li>
                 ))}
               </ul>
@@ -6652,8 +6287,8 @@ export default function App() {
               <section>
                 <h3>Purpose</h3>
                 <ul>
-                  <li>task-001 is built for fast operational task triage: capture work, classify it, decide what is important, urgent, unclear, self-owned, or delegable, and keep it visible until it is started or done.</li>
-                  <li>The app is aimed at individuals and small operational teams that need lightweight action steering. It is intentionally focused on categorizing, prioritizing, dispatching, following up, and reviewing tasks.</li>
+                  <li>task-001 is built for fast operational task triage: capture work, classify it, decide what is important, urgent, or unclear, and keep it visible until it is started or done.</li>
+                  <li>The app is aimed at individuals and small operational teams that need lightweight action steering. It is intentionally focused on categorizing, prioritizing, and reviewing tasks.</li>
                 </ul>
               </section>
 
@@ -6673,7 +6308,7 @@ export default function App() {
                   <li>The header view icon switches the current session between List and Kanban. That toggle is temporary; persistent defaults are changed only in Options.</li>
                   <li>Browser and phone can have separate default view modes and separate edit-section defaults. Edit sections default to expanded on both devices and are stored in user settings when the Supabase columns exist, with local storage as fallback.</li>
                   <li>Task details can be switched with the header icon for the current view. Options set only the default for fresh sessions: Minimum hides parameter badges and card content, including the Additional details label. Maximum shows parameter badges; cards with a description, subtasks, or comments then show a collapsible Additional details label below the badges, and opening it reveals the labeled content panels.</li>
-                  <li>Kanban groups active tasks into the enabled columns Clarify, Delegate, Open, and Started.</li>
+                  <li>Kanban groups active tasks into the enabled columns Clarify, Open, and Started.</li>
                   <li>On phones, Kanban scrolls horizontally by column, shows edge hints when more columns are available, and snaps to the next column while scrolling.</li>
                 </ul>
               </section>
@@ -6681,11 +6316,10 @@ export default function App() {
               <section>
                 <h3>Task Values</h3>
                 <ul>
-                  <li>When answers: when should we act? It is derived from urgency and workability. Default sort: Clarify, Now, Later, Someday.</li>
+                  <li>When answers: when should we act? It is derived from urgency. Default sort: Clarify, Now, Later, Someday.</li>
                   <li>Priority answers: how important is this? It is derived from damage and impact. Default sort: Prioritize, P1, P2, P3.</li>
                   <li>Urgency answers how urgently the situation needs a response. Priority describes importance; urgency describes time pressure. Both can be independent.</li>
-                  <li>Action is calculated from assignee and dispatch state: Open means nobody is assigned, Self means the Master Dispatcher owns it, Delegate means the assignee still needs to be informed, and Assigned means the assignee has been informed.</li>
-                  <li>When a task first becomes Started and has no start date, the app sets the start date to today. Selecting Workability = Today/next sets both Start date and Due to today. Follow-up is separate from the task due date and is used to decide when to ask an assignee again. If Due limits the Follow-up date, the field shows that limit inline.</li>
+                  <li>When a task first becomes Started and has no start date, the app sets the start date to today.</li>
                 </ul>
               </section>
 
@@ -6709,7 +6343,7 @@ export default function App() {
                   <li>If you leave an edit surface with unsaved changes, the app asks whether to save or discard. Completing and deleting tasks keep their explicit confirmation prompts.</li>
                   <li>Description supports paragraphs, bullet points, and clickable web links. Long descriptions are previewed and can be opened in a popup.</li>
                   <li>Predecessor and Successor fields use searchable checkbox dropdowns: type to narrow the task list, or keep selecting from the dropdown as usual.</li>
-                  <li>Text fields guide length without blocking fast capture too early: task names wrap in a wider controlled, non-resizable field while capturing and editing, other multiline fields scroll internally when needed without manual resize handles, task names warn at 80/125 and stop at 250, subtasks warn at 250 and stop at 1000, comments warn at 500 and stop at 5000, descriptions stop at 20000, tags stop at 24, and assignee/Master Dispatcher names stop at 60.</li>
+                  <li>Text fields guide length without blocking fast capture too early: task names wrap in a wider controlled, non-resizable field while capturing and editing, other multiline fields scroll internally when needed without manual resize handles, task names warn at 80/125 and stop at 250, subtasks warn at 250 and stop at 1000, comments warn at 500 and stop at 5000, descriptions stop at 20000, and tags stop at 24.</li>
                 </ul>
               </section>
 
@@ -7069,59 +6703,6 @@ function SelectField({
       )}
         </>
       )}
-    </label>
-  );
-}
-
-function AssigneeField({ label, value, options, onChange, title = "" }) {
-  const [isOpen, setIsOpen] = useState(false);
-  const visibleOptions = options.filter(option => option !== value);
-
-  return (
-    <label title={title}>
-      <span>{label}</span>
-      <div className="comboBox">
-        <input
-          value={value}
-          onChange={event => {
-            onChange(truncateText(event.target.value, TEXT_LIMITS.assignee.max));
-            setIsOpen(false);
-          }}
-          onBlur={() => window.setTimeout(() => setIsOpen(false), 120)}
-          placeholder="Enter assignee"
-          maxLength={TEXT_LIMITS.assignee.max}
-          title={title}
-        />
-        <button
-          type="button"
-          className="comboArrow"
-          onMouseDown={event => {
-            event.preventDefault();
-            setIsOpen(current => !current);
-          }}
-          aria-label={`Select ${label}`}
-          aria-expanded={isOpen}
-        />
-        {isOpen && visibleOptions.length > 0 && (
-          <div className="comboMenu" role="listbox">
-            {visibleOptions.map(option => (
-              <button
-                key={option}
-                type="button"
-                role="option"
-                onMouseDown={event => {
-                  event.preventDefault();
-                  onChange(option);
-                  setIsOpen(false);
-                }}
-              >
-                {option}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-      <InputGuidance value={value} limits={TEXT_LIMITS.assignee} label={label} />
     </label>
   );
 }
@@ -7951,8 +7532,6 @@ function TaskRow({
   onToggleDone,
   onShareTask,
   onQuickChange,
-  bearbeiterOptions,
-  masterDispatcherName,
   predecessorTargets,
   successorTargets,
   dependencyOptions,
@@ -7967,10 +7546,6 @@ function TaskRow({
   const data = isEditing ? editDraft : task;
   const done = isDone(task);
   const deleted = isDeleted(task);
-  const isFollowUpRelevant = isExternalAssignee(data.bearbeiter, masterDispatcherName);
-  const visibleFollowUpDate = isFollowUpRelevant ? data.followUpDate : "";
-  const followUpLimitHint = isFollowUpRelevant ? getFollowUpDateLimitHint(data.faellig) : "";
-  const isDelegatedWithoutResponseForUi = isFollowUpRelevant && isDelegatedWithoutResponse(data, { masterDispatcherName });
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const rowRef = useRef(null);
   const deleteConfirmRef = useRef(null);
@@ -8094,18 +7669,6 @@ function TaskRow({
                 <option key={option} value={option}>{getDisplayValue(option)}</option>
               ))}
             </select>
-            <select
-              value={data.bearbeitbarkeit}
-              onChange={event => onChange("bearbeitbarkeit", event.target.value)}
-              title={getTooltip("bearbeitbarkeit", data.bearbeitbarkeit)}
-            >
-              <option value={CRITERIA_PLACEHOLDER} disabled>
-                {CRITERIA_PLACEHOLDER} select
-              </option>
-              {BEARBEITBARKEIT_OPTIONS.map(option => (
-                <option key={option} value={option}>{getDisplayValue(option)}</option>
-              ))}
-            </select>
             <span className={`pill ${getWannClass(getEffectiveWann(data.wann))}`} title={getTooltip("wann", getEffectiveWann(data.wann))}>{getDisplayValue(getEffectiveWann(data.wann))}</span>
           </div>
         ) : (
@@ -8140,66 +7703,6 @@ function TaskRow({
             {getDisplayValue(getEffectivePrio(task.prio))}
           </span>
         )}
-      </td>
-      <td>
-        {isEditing ? (
-          <div data-edit-field="bearbeiter" title={getTooltip("bearbeiter", data.bearbeiter)}>
-            <AssigneeComboInput
-              value={data.bearbeiter}
-              options={bearbeiterOptions}
-              onChange={value => onChange("bearbeiter", value)}
-            />
-          </div>
-        ) : (
-          <HoverSelectField
-            value={task.bearbeiter}
-            options={sortAssigneeOptions(Array.from(new Set([...bearbeiterOptions, task.bearbeiter])))}
-            onChange={value => onQuickChange(task.id, "bearbeiter", value)}
-            ariaLabel="Change assignee"
-          />
-        )}
-      </td>
-      <td title={getTooltip("actionStatus", getActionStatus(data, masterDispatcherName))}>
-        {isEditing ? (
-          <select
-            data-edit-field="dispatchStatus"
-            value={data.dispatchStatus}
-            onChange={event => onChange("dispatchStatus", event.target.value)}
-            title={getTooltip("dispatchStatus", data.dispatchStatus)}
-          >
-            {DISPATCH_STATUS_OPTIONS.map(option => (
-              <option key={option} value={option}>{getDisplayValue(option)}</option>
-            ))}
-          </select>
-        ) : !isEditing && isExternalAssignee(task.bearbeiter, masterDispatcherName) ? (
-          <HoverSelectField
-            value={getActionStatus(task, masterDispatcherName)}
-            options={DISPATCH_STATUS_OPTIONS}
-            onChange={value => onQuickChange(task.id, "dispatchStatus", value)}
-            ariaLabel="Change action"
-          />
-        ) : (
-          getActionStatus(data, masterDispatcherName)
-        )}
-      </td>
-      <td className={isDelegatedWithoutResponseForUi ? "overdue" : ""}>
-        {isFollowUpRelevant ? (
-          isEditing ? (
-            <div className="followUpDateControl">
-              <input data-edit-field="followUpDate" type="date" value={visibleFollowUpDate} max={data.faellig || undefined} onChange={event => onChange("followUpDate", event.target.value)} title={getTooltip("followUpDate", formatDate(visibleFollowUpDate) || "-")} />
-              {followUpLimitHint && <small className="fieldConstraintHint">{followUpLimitHint}</small>}
-            </div>
-          ) : (
-            <HoverDateField
-              value={visibleFollowUpDate}
-              max={task.faellig || undefined}
-              display={formatDate(visibleFollowUpDate)}
-              onChange={value => onQuickChange(task.id, "followUpDate", value)}
-              ariaLabel="Change follow-up"
-              title={getTooltip("followUpDate", `${formatDate(visibleFollowUpDate) || "-"}${isDelegatedWithoutResponseForUi ? " (follow up)" : ""}`)}
-            />
-          )
-        ) : "-"}
       </td>
       <td className={`tagCell ${!isEditing ? "editableTableCell" : ""}`} onMouseDown={editCell("tags")}>
         {isEditing ? (
@@ -8464,8 +7967,6 @@ function HoverDateField({ value, display, max, onChange, ariaLabel, title }) {
 function getMetaTooltipIntro(label) {
   if (label === "When") return "When answers: when should we act?";
   if (label === "Prio" || label === "Priority") return "Priority answers: how important is this?";
-  if (label === "Assignee") return "To decide/empty: still open who does it\nMaster Dispatcher: do it yourself\nAll other names: delegate or assigned";
-  if (label === "Action") return "Open: nobody assigned yet\nSelf: Master Dispatcher does it\nDelegate: assignee still needs to be informed\nAssigned: assignee is informed; task counts as started";
   return "";
 }
 
@@ -8574,8 +8075,6 @@ function MobileTaskCard({
   successorTargets = [],
   dependencyOptions,
   tagOptions,
-  bearbeiterOptions,
-  masterDispatcherName,
   onStartEdit,
   onCancelEdit,
   onSaveEdit,
@@ -8603,10 +8102,6 @@ function MobileTaskCard({
   const data = isEditing ? editDraft : task;
   const done = isDone(task);
   const deleted = isDeleted(task);
-  const isFollowUpRelevant = isExternalAssignee(data.bearbeiter, masterDispatcherName);
-  const visibleFollowUpDate = isFollowUpRelevant ? data.followUpDate : "";
-  const followUpLimitHint = isFollowUpRelevant ? getFollowUpDateLimitHint(data.faellig) : "";
-  const isDelegatedWithoutResponseForUi = isFollowUpRelevant && isDelegatedWithoutResponse(data, { masterDispatcherName });
   const [isDoneConfirmOpen, setIsDoneConfirmOpen] = useState(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [isParametersOpen, setIsParametersOpen] = useState(editSectionDefaults.parameters);
@@ -8630,11 +8125,10 @@ function MobileTaskCard({
   const startDateText = formatDate(data.startdatum);
   const dueDateText = formatDate(data.faellig);
   const createdDateText = formatDate(data.createdAt);
-  const followUpDateText = formatDate(visibleFollowUpDate);
   const normalizedCardBadgeColumns = normalizeCardBadgeColumns(cardBadgeColumns);
   const effectiveOverviewBadgeColumnValue = isMobileViewport ? "default" : normalizedCardBadgeColumns.overview;
   const effectiveEditBadgeColumnValue = isMobileViewport ? "default" : normalizedCardBadgeColumns.edit;
-  const visibleMetaItemCount = 10;
+  const visibleMetaItemCount = 7;
   const overviewMetaPaddingCount = getCardBadgePaddingCount(visibleMetaItemCount, effectiveOverviewBadgeColumnValue);
   const editMetaPaddingCount = getCardBadgePaddingCount(visibleMetaItemCount, effectiveEditBadgeColumnValue);
   const shouldShowOverviewBadgeSection = Boolean(showBadgeSection && !isEditing);
@@ -8839,8 +8333,6 @@ function MobileTaskCard({
                 <MobileValue label="Tag" value={normalizeTags(data.tags)[0] || ""} className="tagPill">
                   {normalizeTags(data.tags)[0] ? `#${normalizeTags(data.tags)[0]}` : "-"}
                 </MobileValue>
-                <MobileValue label="Assignee" value={data.bearbeiter} />
-                <MobileValue label="Action" value={getActionStatus(data, masterDispatcherName)} />
                 <MobileValue label="Created" value={createdDateText} className="mobileDateBadge" alwaysShowInlineLabel>
                   {createdDateText || "-"}
                 </MobileValue>
@@ -8850,11 +8342,6 @@ function MobileTaskCard({
                 <MobileValue label="Due" value={dueDateText} className={`mobileDateBadge ${isTaskOrSubtaskDueAttention(data) ? "overdue" : ""}`} tooltipNote={getDueDateStateText(data)} alwaysShowInlineLabel>
                   {dueDateText || "-"}
                 </MobileValue>
-                {isFollowUpRelevant ? (
-                  <MobileValue label="Follow-up" value={followUpDateText} className="mobileDateBadge" alwaysShowInlineLabel>
-                    {followUpDateText || "-"}
-                  </MobileValue>
-                ) : renderMobileMetaPlaceholder(`edit-follow-up-placeholder-${task.id}`)}
                 {renderMobileMetaPaddingSlots(editMetaPaddingCount, `edit-meta-padding-${task.id}`)}
               </div>
             )}
@@ -8867,17 +8354,6 @@ function MobileTaskCard({
                 {CRITERIA_PLACEHOLDER} select
               </option>
               {HANDLUNGSDRUCK_OPTIONS.map(option => (
-                <option key={option} value={option}>{getDisplayValue(option)}</option>
-              ))}
-            </select>
-          </label>
-          <label className="mobileEditCriterionField" title={getTooltip("bearbeitbarkeit", data.bearbeitbarkeit)}>
-            <span>Workability</span>
-            <select value={data.bearbeitbarkeit} onChange={event => onChange("bearbeitbarkeit", event.target.value)} title={getTooltip("bearbeitbarkeit", data.bearbeitbarkeit)}>
-              <option value={CRITERIA_PLACEHOLDER} disabled>
-                {CRITERIA_PLACEHOLDER} select
-              </option>
-              {BEARBEITBARKEIT_OPTIONS.map(option => (
                 <option key={option} value={option}>{getDisplayValue(option)}</option>
               ))}
             </select>
@@ -8915,26 +8391,6 @@ function MobileTaskCard({
           <div className="mobileEditTagField" title={getTooltip("tags", normalizeTags(data.tags)[0] || "-")}>
             <TagEditorField values={data.tags} options={tagOptions} onChange={value => onChange("tags", value)} />
           </div>
-          <label className="mobileEditOwnerField" title={getTooltip("bearbeiter", data.bearbeiter)}>
-            <span>Assignee</span>
-            <AssigneeComboInput
-              value={data.bearbeiter}
-              options={bearbeiterOptions}
-              onChange={value => onChange("bearbeiter", value)}
-            />
-          </label>
-          <label className="mobileEditActionField" title={getTooltip("actionStatus", getActionStatus(data, masterDispatcherName))}>
-            <span>Action</span>
-            {isExternalAssignee(data.bearbeiter, masterDispatcherName) ? (
-              <select value={data.dispatchStatus} onChange={event => onChange("dispatchStatus", event.target.value)} title={getTooltip("dispatchStatus", data.dispatchStatus)}>
-                {DISPATCH_STATUS_OPTIONS.map(option => (
-                  <option key={option} value={option}>{getDisplayValue(option)}</option>
-                ))}
-              </select>
-            ) : (
-              <input type="text" value={getDisplayValue(getActionStatus(data, masterDispatcherName))} disabled readOnly title={getTooltip("actionStatus", getActionStatus(data, masterDispatcherName))} />
-            )}
-          </label>
           <label className="mobileEditStatusField" title={getTooltip("googleStatus", getDisplayStatus(data))}>
             <span>Status</span>
             <select value={getDisplayStatus(data)} onChange={event => onChange("googleStatus", event.target.value)} title={getTooltip("googleStatus", getDisplayStatus(data))}>
@@ -8956,15 +8412,6 @@ function MobileTaskCard({
             <span>Due</span>
             <input type="date" value={data.faellig} onChange={event => onChange("faellig", event.target.value)} title={getTooltip("faellig", formatDate(data.faellig) || "-")} />
           </label>
-          {isFollowUpRelevant ? (
-            <label className="mobileEditDateField mobileEditFollowUpField" title={getTooltip("followUpDate", formatDate(visibleFollowUpDate) || "-")}>
-              <span>Follow-up</span>
-              <input type="date" value={visibleFollowUpDate} max={data.faellig || undefined} onChange={event => onChange("followUpDate", event.target.value)} title={getTooltip("followUpDate", formatDate(visibleFollowUpDate) || "-")} />
-              {followUpLimitHint && <small className="fieldConstraintHint">{followUpLimitHint}</small>}
-            </label>
-          ) : (
-            <div className="mobileEditDateField mobileEditFollowUpField mobileEditPlaceholderField" aria-hidden="true" />
-          )}
           <div className="mobileEditFull mobileEditDependencyField" title={getTooltip("dependsOnTaskIds", normalizeTaskIds(data.dependsOnTaskIds).length ? `${normalizeTaskIds(data.dependsOnTaskIds).length} selected` : "-")}>
             <TaskMultiDependencyField
               label="Predecessors"
@@ -9116,8 +8563,6 @@ function MobileTaskCard({
             <MobileValue label="Tag" value={firstTag} className="tagPill">
               {firstTag ? `#${firstTag}` : "-"}
             </MobileValue>
-            <MobileValue label="Assignee" value={task.bearbeiter} />
-            <MobileValue label="Action" value={getActionStatus(task, masterDispatcherName)} />
             <MobileValue label="Created" value={createdDateText} className="mobileDateBadge" alwaysShowInlineLabel>
               {createdDateText || "-"}
             </MobileValue>
@@ -9127,11 +8572,6 @@ function MobileTaskCard({
             <MobileValue label="Due" value={dueDateText} className={`mobileDateBadge ${isTaskOrSubtaskDueAttention(task) ? "overdue" : ""}`} tooltipNote={getDueDateStateText(task)} alwaysShowInlineLabel>
               {dueDateText || "-"}
             </MobileValue>
-            {isFollowUpRelevant ? (
-              <MobileValue label="Follow-up" value={followUpDateText} className="mobileDateBadge" alwaysShowInlineLabel>
-                {followUpDateText || "-"}
-              </MobileValue>
-            ) : renderMobileMetaPlaceholder(`overview-follow-up-placeholder-${task.id}`)}
             {renderMobileMetaPaddingSlots(overviewMetaPaddingCount, `overview-meta-padding-${task.id}`)}
           </div>
         </details>
@@ -9149,8 +8589,6 @@ function MobileTaskCard({
           <MobileValue label="Tag" value={firstTag} className="tagPill">
             {firstTag ? `#${firstTag}` : "-"}
           </MobileValue>
-          <MobileValue label="Assignee" value={task.bearbeiter} />
-          <MobileValue label="Action" value={getActionStatus(task, masterDispatcherName)} />
           <MobileValue label="Created" value={createdDateText} className="mobileDateBadge" alwaysShowInlineLabel>
             {createdDateText || "-"}
           </MobileValue>
@@ -9160,11 +8598,6 @@ function MobileTaskCard({
           <MobileValue label="Due" value={dueDateText} className={`mobileDateBadge ${isTaskOrSubtaskDueAttention(task) ? "overdue" : ""}`} tooltipNote={getDueDateStateText(task)} alwaysShowInlineLabel>
             {dueDateText || "-"}
           </MobileValue>
-          {isFollowUpRelevant ? (
-            <MobileValue label="Follow-up" value={followUpDateText} className="mobileDateBadge" alwaysShowInlineLabel>
-              {followUpDateText || "-"}
-            </MobileValue>
-          ) : renderMobileMetaPlaceholder(`overview-follow-up-placeholder-${task.id}`)}
           {renderMobileMetaPaddingSlots(overviewMetaPaddingCount, `overview-meta-padding-${task.id}`)}
         </div>
       ))}
@@ -9235,8 +8668,6 @@ function MobileTaskCard({
                   <MobileValue label="Tag" value={firstTag} className="tagPill">
                     {firstTag ? `#${firstTag}` : "-"}
                   </MobileValue>
-                  <MobileValue label="Assignee" value={task.bearbeiter} />
-                  <MobileValue label="Action" value={getActionStatus(task, masterDispatcherName)} />
                   <MobileValue label="Created" value={createdDateText} className="mobileDateBadge" alwaysShowInlineLabel>
                     {createdDateText || "-"}
                   </MobileValue>
@@ -9246,11 +8677,6 @@ function MobileTaskCard({
                   <MobileValue label="Due" value={dueDateText} className={`mobileDateBadge ${isTaskOrSubtaskDueAttention(task) ? "overdue" : ""}`} tooltipNote={getDueDateStateText(task)} alwaysShowInlineLabel>
                     {dueDateText || "-"}
                   </MobileValue>
-                  {isFollowUpRelevant ? (
-                    <MobileValue label="Follow-up" value={followUpDateText} className="mobileDateBadge" alwaysShowInlineLabel>
-                      {followUpDateText || "-"}
-                    </MobileValue>
-                  ) : renderMobileMetaPlaceholder(`overview-follow-up-placeholder-${task.id}`)}
                   {renderMobileMetaPaddingSlots(overviewMetaPaddingCount, `overview-meta-padding-${task.id}`)}
                 </div>
                   </MobileDescriptionPanel>
@@ -9286,14 +8712,6 @@ function MobileTaskCard({
       )}
 
       <dl className="mobileDetails">
-        <div>
-          <dt>Assignee</dt>
-          <dd>{task.bearbeiter}</dd>
-        </div>
-        <div>
-          <dt>Action</dt>
-          <dd>{getActionStatus(task, masterDispatcherName)}</dd>
-        </div>
         <div>
           <dt>Start date</dt>
           <dd className={isTaskOrSubtaskStartAttention(task) ? "overdue" : ""} title={getStartDateStateText(task) || undefined}>{formatDate(task.startdatum) || "-"}</dd>
@@ -9442,21 +8860,6 @@ function ComboInput({ value, options, onChange, placeholder, ariaLabel, maxLengt
   );
 }
 
-function AssigneeComboInput({ value, options, onChange }) {
-  return (
-    <ComboInput
-      value={value}
-      options={options}
-      onChange={onChange}
-      placeholder="Enter assignee"
-      ariaLabel="Select assignee"
-      maxLength={TEXT_LIMITS.assignee.max}
-      guidance={TEXT_LIMITS.assignee}
-      guidanceLabel="Assignee"
-    />
-  );
-}
-
 function getWannClass(wann) {
   const normalized = String(wann)
     .toLowerCase()
@@ -9468,10 +8871,3 @@ function getPrioClass(prio) {
   return `prio-${String(prio).toLowerCase()}`;
 }
 
-function sortAssigneeOptions(options) {
-  return options.sort((a, b) => {
-    if (a === "bestimmen") return -1;
-    if (b === "bestimmen") return 1;
-    return a.localeCompare(b, "de");
-  });
-}

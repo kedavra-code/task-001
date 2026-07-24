@@ -3,11 +3,12 @@ create table if not exists public.tasks (
   user_id uuid references auth.users(id) on delete cascade,
   task_code text not null,
   handlungsdruck text,
-  bearbeitbarkeit text,
   risiko text,
   impact text,
   wann text,
   prio text,
+  -- bearbeitbarkeit, bearbeiter, dispatch_status, and follow_up_date are no longer read/written by the app since Workability/Assignee/Action/Follow-up were removed on 2026-07-24; kept only for old rows.
+  bearbeitbarkeit text,
   bearbeiter text,
   dispatch_status text not null default 'delegieren',
   follow_up_date date,
@@ -42,6 +43,12 @@ add column if not exists comments jsonb not null default '[]'::jsonb;
 alter table public.tasks
 add column if not exists tags text[] not null default '{}';
 
+-- bearbeitbarkeit, bearbeiter, dispatch_status, and follow_up_date are no longer read/written by the app since Workability/Assignee/Action/Follow-up were removed on 2026-07-24; kept only for old rows.
+alter table public.tasks
+add column if not exists bearbeitbarkeit text;
+
+alter table public.tasks
+add column if not exists bearbeiter text;
 
 alter table public.tasks
 add column if not exists dispatch_status text not null default 'delegieren';
@@ -73,6 +80,7 @@ create table if not exists public.user_settings (
   selected_tag_tabs text[] not null default '{}',
   available_tags text[] not null default '{}',
   browser_compact_view boolean default true,
+  -- master_dispatcher_name is no longer read/written by the app since the Master Dispatcher setting was removed on 2026-07-24; kept only for old rows.
   master_dispatcher_name text default 'Lars',
   tooltips_enabled boolean default true,
   dark_mode boolean default false,
@@ -87,7 +95,7 @@ create table if not exists public.user_settings (
   default_view_mode_mobile text not null default 'kanban',
   default_start_tab text not null default 'active',
   default_start_tab_mobile text not null default 'active',
-  kanban_columns jsonb not null default '["clarify","dispatch","open","started"]'::jsonb,
+  kanban_columns jsonb not null default '["clarify","open","started"]'::jsonb,
   upcoming_badge_defaults jsonb not null default '{"version":2,"browser":false,"mobile":false,"dependenciesBrowser":false,"dependenciesMobile":false}'::jsonb,
   updated_at timestamptz not null default now()
 );
@@ -104,6 +112,7 @@ add column if not exists updated_at timestamptz not null default now();
 alter table public.user_settings
 add column if not exists browser_compact_view boolean default true;
 
+-- master_dispatcher_name is no longer read/written by the app since the Master Dispatcher setting was removed on 2026-07-24; kept only for old rows.
 alter table public.user_settings
 add column if not exists master_dispatcher_name text default 'miro';
 
@@ -170,7 +179,7 @@ alter table public.user_settings
 add column if not exists default_start_tab_mobile text not null default 'active';
 
 alter table public.user_settings
-add column if not exists kanban_columns jsonb not null default '["clarify","dispatch","open","started"]'::jsonb;
+add column if not exists kanban_columns jsonb not null default '["clarify","open","started"]'::jsonb;
 
 alter table public.user_settings
 add column if not exists upcoming_badge_defaults jsonb not null default '{"version":2,"browser":false,"mobile":false,"dependenciesBrowser":false,"dependenciesMobile":false}'::jsonb;

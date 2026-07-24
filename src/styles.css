@@ -201,11 +201,6 @@ button {
   gap: 8px;
 }
 
-.mainActionMenu .masterDispatcherRow {
-  order: 1;
-  grid-column: 1;
-}
-
 .mainActionMenu .settingsRow {
   order: 2;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -910,12 +905,6 @@ main {
   line-height: 1.25;
 }
 
-.followUpDateControl {
-  display: grid;
-  gap: 4px;
-  min-width: 128px;
-}
-
 .taskForm > .tagSelectField {
   width: min(220px, 100%);
 }
@@ -926,10 +915,6 @@ main {
 
 .taskForm > .successMessage {
   width: min(620px, 100%);
-}
-
-.captureMobileOwnerField {
-  display: none;
 }
 
 .successMessage {
@@ -2186,8 +2171,7 @@ input:read-only {
   grid-column: 1 / -1;
 }
 
-.browserCompactTaskList .mobileEditTagField,
-.browserCompactTaskList .mobileEditPlaceholderField {
+.browserCompactTaskList .mobileEditTagField {
   width: 100%;
   max-width: 132px;
   min-width: 0;
@@ -3852,10 +3836,6 @@ tr[data-edit-surface="true"] .taskCell {
     grid-template-columns: 1fr;
   }
 
-  .mainActionMenu .masterDispatcherRow {
-    grid-column: 1;
-  }
-
   .mainActionMenu .menuDeletedButton,
   .mainActionMenu .menuTagsButton,
   .mainActionMenu .menuDocButton,
@@ -3976,16 +3956,6 @@ tr[data-edit-surface="true"] .taskCell {
 
   .captureAdvancedFields {
     display: none;
-  }
-
-  .captureMobileOwnerField {
-    display: block;
-    width: 100%;
-  }
-
-  .captureMobileOwnerField label,
-  .captureMobileOwnerField .comboBox {
-    width: 100%;
   }
 
   .captureDerivedRow,
@@ -4300,18 +4270,11 @@ tr[data-edit-surface="true"] .taskCell {
   }
 
   .mobileEditTagField,
-  .mobileEditOwnerField,
-  .mobileEditActionField,
   .mobileEditStatusField,
-  .mobileEditDateField,
-  .mobileEditOwnerField .comboBox,
-  .mobileEditOwnerField .comboBox input {
+  .mobileEditDateField {
     width: 100%;
   }
 
-  .mobileEditOwnerField .comboBox input {
-    min-height: 44px;
-  }
   .mobileEditFull {
     grid-column: 1 / -1;
   }

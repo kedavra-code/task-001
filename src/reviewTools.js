@@ -1,7 +1,5 @@
 export const REVIEW_STALE_DAYS = 7;
 
-const DISPATCH_ACTIONS = new Set(["delegieren", "zugeteilt"]);
-
 function normalizeText(value) {
   return String(value ?? "").trim();
 }
@@ -46,14 +44,6 @@ function isActive(task) {
   return task && !isDone(task) && !isDeleted(task);
 }
 
-export function getReviewActionStatus(task, masterDispatcherName = "miro") {
-  const assignee = normalizeText(task?.bearbeiter);
-  const master = normalizeText(masterDispatcherName);
-  if (!assignee || assignee === "bestimmen") return "Offen";
-  if (master && assignee.toLowerCase() === master.toLowerCase()) return "selber";
-  return DISPATCH_ACTIONS.has(task?.dispatchStatus) ? task.dispatchStatus : "delegieren";
-}
-
 export function getLatestCommentTime(task) {
   const comments = Array.isArray(task?.comments) ? task.comments : [];
   return comments.reduce((latest, comment) => {
@@ -69,30 +59,6 @@ export function getTaskActivityTime(task) {
     getLatestCommentTime(task),
     getIsoTime(task?.completedAt) || 0
   );
-}
-
-export function clampFollowUpDateToDueDate(followUpDate, dueDate) {
-  const followUp = normalizeText(followUpDate).slice(0, 10);
-  const due = normalizeText(dueDate).slice(0, 10);
-  const followUpTime = getDateOnlyTime(followUp);
-  const dueTime = getDateOnlyTime(due);
-  if (!followUpTime) return "";
-  if (dueTime && followUpTime > dueTime) return due;
-  return followUp;
-}
-export function isDelegatedWithoutResponse(task, options = {}) {
-  if (!isActive(task)) return false;
-  const todayTime = getTodayTime(options.today);
-  const staleDays = Number.isFinite(options.staleDays) ? options.staleDays : REVIEW_STALE_DAYS;
-  const actionStatus = getReviewActionStatus(task, options.masterDispatcherName);
-  if (!DISPATCH_ACTIONS.has(actionStatus)) return false;
-
-  const followUpTime = getDateOnlyTime(task?.followUpDate);
-  if (!followUpTime) return true;
-  if (followUpTime <= todayTime) return true;
-
-  const latestCommentTime = getLatestCommentTime(task) || getIsoTime(task?.createdAt) || 0;
-  return Boolean(latestCommentTime && daysBetween(latestCommentTime, todayTime) >= staleDays);
 }
 
 export function isOverdueTask(task, today = new Date()) {
@@ -120,11 +86,6 @@ export function getTaskReviewReasons(task, options = {}) {
     }
   }
 
-  if (isDelegatedWithoutResponse(task, options)) {
-    const followUpTime = getDateOnlyTime(task?.followUpDate);
-    reasons.push(followUpTime ? "Delegated: follow-up reached" : "Delegated without follow-up date");
-  }
-
   if (!normalizeText(task.startdatum) || !normalizeText(task.faellig)) {
     reasons.push("Start or due date missing");
   }
@@ -147,13 +108,11 @@ function isDateInRange(value, today, daysBack) {
 export function getTaskReviewSummary(tasks, options = {}) {
   const list = Array.isArray(tasks) ? tasks : [];
   const today = options.today || new Date();
-  const masterDispatcherName = options.masterDispatcherName;
   return {
     doneToday: list.filter(task => isDateInRange(task.completedAt, today, 1)).length,
     doneWeek: list.filter(task => isDateInRange(task.completedAt, today, 7)).length,
     started: list.filter(task => isActive(task) && isStarted(task)).length,
     open: list.filter(task => isActive(task) && task.googleStatus === "Offen").length,
-    overdue: list.filter(task => isOverdueTask(task, today)).length,
-    delegatedWithoutResponse: list.filter(task => isDelegatedWithoutResponse(task, { ...options, masterDispatcherName })).length
+    overdue: list.filter(task => isOverdueTask(task, today)).length
   };
 }
