@@ -59,6 +59,7 @@ const DEFAULT_START_TAB_STORAGE_KEY = "task-001.default-start-tab.v1";
 const DEFAULT_MOBILE_START_TAB_STORAGE_KEY = "task-001.default-mobile-start-tab.v1";
 const KANBAN_COLUMNS_STORAGE_KEY = "task-001.kanban-columns.v1";
 const SESSION_VIEW_STORAGE_KEY = "task-001.session-view.v1";
+const SETTINGS_SYNCED_STORAGE_KEY_PREFIX = "task-001.settings-synced.v1:";
 
 const TASK_ID_PREFIX = "T";
 const MAX_TASK_TAGS = 1;
@@ -1400,12 +1401,14 @@ function loadLocalTasks() {
   }
 }
 
-function mergeLocalExpandedTaskFields(remoteTasks, localTasks) {
+function mergeRemoteAndLocalTasks(remoteTasks, localTasks) {
   const localTasksById = new Map(localTasks.map(task => [task.id, task]));
   const localTasksByCode = new Map(localTasks.map(task => [task.taskCode, task]));
+  const matchedLocalIds = new Set();
 
-  return remoteTasks.map(remoteTask => {
+  const mergedRemoteTasks = remoteTasks.map(remoteTask => {
     const localTask = localTasksById.get(remoteTask.id) || localTasksByCode.get(remoteTask.taskCode);
+    if (localTask) matchedLocalIds.add(localTask.id);
     const localSubtasks = normalizeSubtasks(localTask?.subtasks);
     const localComments = normalizeComments(localTask?.comments);
     const localTags = normalizeTags(localTask?.tags);
@@ -1429,6 +1432,12 @@ function mergeLocalExpandedTaskFields(remoteTasks, localTasks) {
       dependsOnTaskId: nextPredecessorIds[0] || ""
     };
   });
+
+  // Tasks that only exist locally (e.g. a first sync after Supabase was unreachable/misconfigured,
+  // or an offline edit) must never be silently dropped just because the remote list doesn't have them yet —
+  // that would also delete them server-side on the next save (see saveRemoteTasks's delete-diff).
+  const localOnlyTasks = localTasks.filter(task => !matchedLocalIds.has(task.id));
+  return [...mergedRemoteTasks, ...localOnlyTasks];
 }
 
 async function loadRemoteTasks(userId) {
@@ -3424,6 +3433,17 @@ export default function App() {
       return;
     }
 
+    // The first time this browser syncs settings for this user, local settings (dark mode, tab layout, tags, ...)
+    // may reflect real usage that never made it to Supabase yet (e.g. Supabase was unreachable/misconfigured).
+    // Skip pulling remote settings down this one time so local values survive and get uploaded by the normal
+    // save effect instead of being silently overwritten by a still-empty/default remote row.
+    const settingsSyncedKey = `${SETTINGS_SYNCED_STORAGE_KEY_PREFIX}${session.user.id}`;
+    if (localStorage.getItem(settingsSyncedKey) !== "true") {
+      localStorage.setItem(settingsSyncedKey, "true");
+      setIsSettingsLoaded(true);
+      return;
+    }
+
     let isCancelled = false;
 
     loadRemoteUserSettings(session.user.id)
@@ -3523,7 +3543,7 @@ export default function App() {
     loadRemoteTasks(session.user.id)
       .then(remoteTasks => {
         if (isCancelled) return;
-        setTasks(currentTasks => mergeLocalExpandedTaskFields(remoteTasks, currentTasks));
+        setTasks(currentTasks => mergeRemoteAndLocalTasks(remoteTasks, currentTasks));
         setIsLoaded(true);
         setStorageError("");
       })
