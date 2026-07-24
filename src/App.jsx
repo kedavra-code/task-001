@@ -4242,7 +4242,7 @@ export default function App() {
 
     updateTasksWithUndo(nextTasks);
     setDraft(createEmptyTask());
-    setCaptureMessage({ id: nextId, code: nextTaskCode });
+    setCaptureMessage(nextTaskCode);
   }
 
   function addCatalogTag(tag) {
@@ -4830,16 +4830,6 @@ export default function App() {
     });
   }
 
-
-  function openCapturedTask(taskId) {
-    requestEditExit(() => {
-      setActionMessage("");
-      const task = tasks.find(candidate => candidate.id === taskId);
-      if (!task) return;
-
-      showTaskDetails(task, { highlight: true, scroll: true, preserveView: false, forceListView: true, forceMaximum: true });
-    });
-  }
 
   function updateEditSectionDefault(device, section, value) {
     setEditSectionDefaults(current => normalizeEditSectionDefaults({
@@ -5540,24 +5530,18 @@ export default function App() {
           <form
             className="taskForm"
             onSubmit={addTask}
-            onPointerDownCapture={event => {
-              if (!captureMessage || event.target.closest?.(".successMessage")) return;
+            onPointerDownCapture={() => {
+              if (!captureMessage) return;
               setCaptureMessage("");
             }}
-            onFocusCapture={event => {
-              if (!captureMessage || event.target.closest?.(".successMessage")) return;
+            onFocusCapture={() => {
+              if (!captureMessage) return;
               setCaptureMessage("");
             }}
           >
             {captureMessage && (
               <p className="successMessage">
-                Task{" "}
-                {typeof captureMessage === "object" ? (
-                  <button type="button" className="inlineLinkButton" onClick={() => openCapturedTask(captureMessage.id)}>
-                    {captureMessage.code}
-                  </button>
-                ) : null}
-                {" "}created
+                Task {captureMessage} created
               </p>
             )}
 

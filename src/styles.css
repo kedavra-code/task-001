@@ -840,15 +840,6 @@ main {
   font-weight: 800;
 }
 
-.inlineLinkButton {
-  border: 0;
-  background: transparent;
-  color: #1f6feb;
-  padding: 0;
-  font-weight: 900;
-  text-decoration: underline;
-}
-
 .appMessage {
   margin-bottom: 14px;
 }
@@ -4147,8 +4138,7 @@ input:read-only {
 [data-theme="dark"] .topbarTitleButton,
 [data-theme="dark"] .taskIdButton,
 [data-theme="dark"] .taskIdStatic,
-[data-theme="dark"] .dependencyLink,
-[data-theme="dark"] .inlineLinkButton {
+[data-theme="dark"] .dependencyLink {
   color: #78aaff;
 }
 
