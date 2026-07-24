@@ -1,9 +1,6 @@
 import assert from "node:assert/strict";
 import {
-  findDependencyCycle,
-  getDependencyCycleMessage,
   getDueReminderStatus,
-  getPredecessorCompletionBlockMessage,
   getSubtaskCompletionBlockMessage,
   shouldShowDueReminder
 } from "../src/taskRules.js";
@@ -29,7 +26,6 @@ function task(overrides = {}) {
     taskCode: overrides.taskCode || "T-001",
     task: overrides.task || "Test task",
     googleStatus: "Offen",
-    dependsOnTaskIds: [],
     subtasks: [],
     startdatum: "",
     faellig: "",
@@ -55,33 +51,6 @@ test("completed subtasks do not block task completion", () => {
   }));
 
   assert.equal(message, "");
-});
-
-test("open predecessors block task completion", () => {
-  const predecessor = task({ id: "a", taskCode: "T-001", task: "Before" });
-  const current = task({ id: "b", taskCode: "T-002", task: "After", dependsOnTaskIds: ["a"] });
-  const message = getPredecessorCompletionBlockMessage(current, new Map([[predecessor.id, predecessor]]));
-
-  assert.match(message, /T-001/);
-});
-
-test("done predecessors do not block task completion", () => {
-  const predecessor = task({ id: "a", taskCode: "T-001", googleStatus: "Erledigt" });
-  const current = task({ id: "b", taskCode: "T-002", dependsOnTaskIds: ["a"] });
-  const message = getPredecessorCompletionBlockMessage(current, new Map([[predecessor.id, predecessor]]));
-
-  assert.equal(message, "");
-});
-
-test("dependency cycles are detected", () => {
-  const tasks = [
-    task({ id: "a", taskCode: "T-001", dependsOnTaskIds: ["c"] }),
-    task({ id: "b", taskCode: "T-002", dependsOnTaskIds: ["a"] }),
-    task({ id: "c", taskCode: "T-003", dependsOnTaskIds: ["b"] })
-  ];
-
-  assert.deepEqual(findDependencyCycle(tasks), ["a", "c", "b", "a"]);
-  assert.match(getDependencyCycleMessage(tasks), /T-001/);
 });
 
 test("started tasks hide start reminders but still show due reminders", () => {

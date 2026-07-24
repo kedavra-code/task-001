@@ -953,7 +953,6 @@ select {
 select,
 .comboBox input,
 .tagSelectTrigger,
-.multiDependencyTrigger,
 .actionSelect {
   font-family: inherit;
   font-size: 13px;
@@ -1637,17 +1636,6 @@ input:read-only {
   height: 16px;
 }
 
-.browserCompactTaskList .mobileTaskHeaderActions .taskRelationMark {
-  width: 32px;
-  min-height: 32px;
-  margin-left: 0;
-  border: 1px solid #cfd7df;
-  font-size: 16px;
-  border-radius: 6px;
-  background: #ffffff;
-  white-space: nowrap;
-}
-
 .browserCompactTaskList .mobileMeta {
   --browser-badge-cell-width: 145px;
   display: grid;
@@ -2025,34 +2013,13 @@ input:read-only {
   min-width: 0;
 }
 
-.browserCompactTaskList .mobileEditDependencyField {
-  grid-column: span 2;
-  width: min(274px, 100%);
-  max-width: 274px;
-}
-
-.browserCompactTaskList .mobileEditTagField .tagField,
-.browserCompactTaskList .mobileEditDependencyField .multiDependencyField {
+.browserCompactTaskList .mobileEditTagField .tagField {
   width: 100%;
   min-width: 0;
 }
 
-.browserCompactTaskList .mobileEditTagField .tagSelectTrigger,
-.browserCompactTaskList .mobileEditDependencyField .multiDependencyTrigger {
+.browserCompactTaskList .mobileEditTagField .tagSelectTrigger {
   width: 100%;
-}
-.browserCompactTaskList .mobileEditDependencyField .multiDependencyMenu {
-  width: min(460px, calc(100vw - 32px));
-  max-width: 460px;
-}
-
-.browserCompactTaskList .mobileEditDependencyField .multiDependencyMenu label {
-  grid-template-columns: 16px minmax(0, 1fr);
-  gap: 6px;
-  width: 100%;
-  max-width: none;
-  box-sizing: border-box;
-  padding-inline: 8px;
 }
 
 .browserCompactTaskList label.mobileEditFull,
@@ -2215,25 +2182,6 @@ input:read-only {
 }
 
 
-.taskRelationMark {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  margin-left: 4px;
-  border: 0;
-  background: transparent;
-  color: #61707f;
-  font-size: 12px;
-  font-weight: 900;
-  line-height: 1;
-  padding: 0;
-  vertical-align: middle;
-}
-
-.taskRelationButton {
-  cursor: pointer;
-}
-
 .tagField {
   position: relative;
   display: grid;
@@ -2330,8 +2278,7 @@ input:read-only {
   box-shadow: 0 16px 48px rgba(23, 32, 42, 0.14);
 }
 
-.tagSelectMenu .tagChoice,
-.multiDependencyMenu label {
+.tagSelectMenu .tagChoice {
   display: grid;
   grid-template-columns: 18px minmax(0, 1fr);
   align-items: start;
@@ -2346,20 +2293,17 @@ input:read-only {
   line-height: 1.25;
 }
 
-.tagSelectMenu .tagChoice:hover,
-.multiDependencyMenu label:hover {
+.tagSelectMenu .tagChoice:hover {
   border-color: #b9c9dc;
   background: #eef4ff;
 }
 
-.tagSelectMenu .tagChoice input,
-.multiDependencyMenu label input {
+.tagSelectMenu .tagChoice input {
   align-self: start;
   margin: 1px 0 0;
 }
 
-.tagSelectMenu .tagChoice span,
-.multiDependencyMenu label span {
+.tagSelectMenu .tagChoice span {
   min-width: 0;
   overflow-wrap: anywhere;
 }
@@ -2429,190 +2373,8 @@ input:read-only {
   font-weight: 700;
 }
 
-.relationPicker {
-  position: relative;
-  display: inline-flex;
-}
-
-.dependencyDisplay {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.dependencyDisplay .taskRelationMark {
-  color: #17202a;
-  font-size: 20px;
-  font-weight: 1000;
-  text-shadow:
-    0.5px 0 #17202a,
-    -0.5px 0 #17202a,
-    0 0.5px #17202a,
-    0 -0.5px #17202a;
-}
-
-.dependencyLink {
-  border: 0;
-  background: transparent;
-  color: #1f6feb;
-  padding: 0;
-  font-weight: 800;
-  text-decoration: underline;
-}
-.mobileDependencyRelations {
-  display: grid;
-  gap: 5px;
-  min-width: 0;
-}
-
-.mobileDependencyRelationGroup {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-  color: #61707f;
-  font-size: var(--task-card-font-size);
-  font-weight: 800;
-}
-
-.mobileDependencyRelationGroup > span:first-child {
-  flex: 0 0 auto;
-}
-
-.mobileDependencyRelationGroup .relationPicker {
-  min-width: 0;
-}
-
-.mobileDependencyRelationGroup .dependencyDisplay {
-  min-width: 0;
-}
-
-.mobileDependencyRelationGroup .dependencyLink {
-  max-width: min(180px, 52vw);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.mobileDependencyRelationGroup .taskRelationMark {
-  font-size: 16px;
-}
-
-.relationMenu {
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 0;
-  z-index: 25;
-  display: grid;
-  gap: 2px;
-  min-width: 220px;
-  max-width: 320px;
-  max-height: 240px;
-  overflow: auto;
-  border: 1px solid #cfd7df;
-  border-radius: 6px;
-  background: #ffffff;
-  padding: 42px 6px 6px;
-  box-shadow: 0 14px 36px rgba(23, 32, 42, 0.18);
-}
-
-.relationMenu button {
-  display: grid;
-  gap: 2px;
-  border: 0;
-  border-radius: 4px;
-  background: transparent;
-  color: #17202a;
-  padding: 7px 8px;
-  text-align: left;
-}
-
-.relationMenu button:hover {
-  background: #eef4ff;
-}
-
-.relationMenu span {
-  color: #61707f;
-  font-size: 12px;
-}
-
-.relationIconMenu {
-  right: 0;
-  left: auto;
-}
-
-.multiDependencyField {
-  position: relative;
-  display: grid;
-  gap: 6px;
-  min-width: 180px;
-  border: 0;
-  margin: 0;
-  padding: 0;
-}
-
-.multiDependencyField legend {
-  color: #61707f;
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.multiDependencyTrigger {
-  min-height: 34px;
-  overflow: hidden;
-  border: 1px solid #cfd7df;
-  border-radius: 6px;
-  background: #ffffff;
-  color: #17202a;
-  padding: 7px 8px;
-  text-align: left;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.multiDependencyMenu {
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 0;
-  z-index: 35;
-  display: grid;
-  gap: 4px;
-  min-width: 220px;
-  max-width: 320px;
-  max-height: 172px;
-  overflow: auto;
-  border: 1px solid #cfd7df;
-  border-radius: 6px;
-  background: #ffffff;
-  padding: 42px 8px 8px;
-  box-shadow: 0 14px 36px rgba(23, 32, 42, 0.18);
-}
-
-.multiDependencyMenu input {
-  width: auto;
-}
-.multiDependencyMenu .multiDependencySearch {
-  width: 100%;
-  min-height: 32px;
-  border: 1px solid #cfd7df;
-  border-radius: 6px;
-  background: #ffffff;
-  color: #17202a;
-  padding: 6px 8px;
-  font: inherit;
-}
-
-.multiDependencyEmpty {
-  color: #61707f;
-  font-size: 13px;
-  font-weight: 700;
-  padding: 8px 10px;
-}
-
 .actionsMenu .popupCloseButton,
-.comboMenu .popupCloseButton,
-.relationMenu .popupCloseButton,
-.multiDependencyMenu .popupCloseButton {
+.comboMenu .popupCloseButton {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -3715,17 +3477,6 @@ input:read-only {
     height: 16px;
   }
 
-  .mobileTaskHeaderActions .taskRelationMark {
-    width: 32px;
-    min-height: 32px;
-    margin-left: 0;
-    border: 1px solid #cfd7df;
-    font-size: 16px;
-    border-radius: 6px;
-    background: #ffffff;
-    white-space: nowrap;
-  }
-
   .mobileMeta,
   .browserCompactTaskList .mobileMeta {
     display: grid;
@@ -3953,34 +3704,28 @@ input:read-only {
 }
 
 [data-theme="dark"] .tagSelectTrigger,
-[data-theme="dark"] .multiDependencyTrigger,
 [data-theme="dark"] .tagSelectMenu,
-[data-theme="dark"] .multiDependencyMenu,
 [data-theme="dark"] .mobileEditDerived {
   border-color: #465563;
   background: #111820;
   color: #e6edf3;
 }
 
-[data-theme="dark"] .tagSelectTrigger.empty,
-[data-theme="dark"] .multiDependencyField legend {
+[data-theme="dark"] .tagSelectTrigger.empty {
   color: #a8b3bf;
 }
 
 [data-theme="dark"] .tagSelectMenu .tagChoice,
-[data-theme="dark"] .multiDependencyMenu label,
 [data-theme="dark"] .mobileEditDerived {
   color: #e6edf3;
 }
 
-[data-theme="dark"] .tagSelectMenu .tagChoice,
-[data-theme="dark"] .multiDependencyMenu label {
+[data-theme="dark"] .tagSelectMenu .tagChoice {
   border-color: #364553;
   background: #182029;
 }
 
-[data-theme="dark"] .tagSelectMenu .tagChoice:hover,
-[data-theme="dark"] .multiDependencyMenu label:hover {
+[data-theme="dark"] .tagSelectMenu .tagChoice:hover {
   border-color: #5b7ca6;
   background: #1d2a39;
 }
@@ -3994,17 +3739,6 @@ input:read-only {
 [data-theme="dark"] .captureDerivedRow .pill,
 [data-theme="dark"] .captureDerivedRow .prio {
   border: 1px solid #536273;
-}
-
-
-[data-theme="dark"] .multiDependencyMenu .multiDependencySearch {
-  border-color: #465563;
-  background: #111820;
-  color: #e6edf3;
-}
-
-[data-theme="dark"] .multiDependencyEmpty {
-  color: #a8b3bf;
 }
 
 [data-theme="dark"] .inputGuidance {
@@ -4021,8 +3755,7 @@ input:read-only {
   color: #ff8a8a;
 }
 
-[data-theme="dark"] .tagSelectMenu input,
-[data-theme="dark"] .multiDependencyMenu input {
+[data-theme="dark"] .tagSelectMenu input {
   accent-color: #6ba3ff;
 }
 
@@ -4137,8 +3870,7 @@ input:read-only {
 
 [data-theme="dark"] .topbarTitleButton,
 [data-theme="dark"] .taskIdButton,
-[data-theme="dark"] .taskIdStatic,
-[data-theme="dark"] .dependencyLink {
+[data-theme="dark"] .taskIdStatic {
   color: #78aaff;
 }
 
@@ -4216,10 +3948,8 @@ input:read-only {
 [data-theme="dark"] .confirmModal,
 [data-theme="dark"] .filterMenu,
 [data-theme="dark"] .comboMenu,
-[data-theme="dark"] .relationMenu,
 [data-theme="dark"] .descriptionPreviewPopup,
 [data-theme="dark"] .comboMenu button,
-[data-theme="dark"] .relationMenu button,
 [data-theme="dark"] .tagCatalogItem,
 [data-theme="dark"] .tagPill,
 [data-theme="dark"] .userAccessItem {
@@ -4229,10 +3959,8 @@ input:read-only {
 }
 
 [data-theme="dark"] .comboMenu button:hover,
-[data-theme="dark"] .relationMenu button:hover,
 [data-theme="dark"] .tagChoice:hover,
 [data-theme="dark"] .tagSelectTrigger:hover,
-[data-theme="dark"] .multiDependencyTrigger:hover,
 [data-theme="dark"] .comboArrow:hover,
 [data-theme="dark"] .comboArrow:focus-visible {
   border-color: #6ba3ff;
@@ -4253,7 +3981,6 @@ input:read-only {
 }
 
 [data-theme="dark"] .userDocContent ul,
-[data-theme="dark"] .relationMenu span,
 [data-theme="dark"] .tagLimit,
 [data-theme="dark"] .emptyTagList {
   color: #a8b3bf;

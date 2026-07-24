@@ -23,7 +23,6 @@ import {
 import { isSupabaseConfigured, supabase } from "./supabaseClient";
 import TaskScopeTabs from "./TaskScopeTabs";
 import { matchesGlobalTaskSearch } from "./taskSearch";
-import { getDependencyCycleMessage } from "./taskRules";
 import {
   applyNormalizedSubtaskRows,
   formatSubtaskForText,
@@ -112,8 +111,6 @@ const CSV_COLUMNS = [
   "comments",
   "subtasks",
   "tags",
-  "dependsOnTaskCode",
-  "dependsOnTaskCodes",
   "googleStatus",
   "startdatum",
   "faellig",
@@ -204,10 +201,6 @@ const DEFAULT_COLUMN_FILTERS = {
   tagFilter: "",
   subtaskSort: "Standard",
   subtaskFilter: "",
-  predecessorSort: "Standard",
-  predecessorFilter: "",
-  successorSort: "Standard",
-  successorFilter: "",
   googleStatusSort: "Standard",
   googleStatus: "Offen",
   startdatumSort: "Standard",
@@ -243,8 +236,6 @@ const EDIT_FIELD_HELP = {
   beschreibung: "Structured description with paragraphs and bullet points.",
   comments: "Task comments with creation and edit dates.",
   subtasks: "Internal checklist. All subtasks must be done before the task can be completed.",
-  dependsOnTaskIds: "Predecessors: tasks that must be done before this task.",
-  successorTaskIds: "Successors: tasks that come after this task.",
   googleStatus: "Task status: Backlog, Doing, Done, or Deleted.",
   startdatum: "Date from which the task should start.",
   faellig: "Task due date."
@@ -262,9 +253,6 @@ const EMPTY_TASK = {
   impact: CRITERIA_PLACEHOLDER,
   prio: CRITERIA_PLACEHOLDER,
   taskCode: "",
-  dependsOnTaskId: "",
-  dependsOnTaskIds: [],
-  successorTaskIds: [],
   task: "",
   beschreibung: "",
   comments: [],
@@ -281,8 +269,6 @@ const EMPTY_TASK = {
 function createEmptyTask() {
   return {
     ...EMPTY_TASK,
-    dependsOnTaskIds: [],
-    successorTaskIds: [],
     comments: [],
     subtasks: [],
     tags: []
@@ -553,8 +539,6 @@ function getEditTooltip(field, value) {
     task: "Task",
     beschreibung: "Description",
     subtasks: "Subtasks",
-    dependsOnTaskIds: "Predecessors",
-    successorTaskIds: "Successors",
     googleStatus: "Status",
     startdatum: "Start date",
     faellig: "Due"
@@ -855,18 +839,8 @@ function getTaskSubtaskText(task) {
   return normalizeSubtasks(task.subtasks).map(formatSubtaskForDisplay).join(" ");
 }
 
-function getTaskDependencyText(taskIds, tasksById) {
-  return normalizeTaskIds(taskIds)
-    .map(taskId => tasksById.get(taskId))
-    .filter(Boolean)
-    .map(task => `${task.taskCode}: ${task.task}`)
-    .join(", ");
-}
-
-function getTaskFilterCache(task, tasksById, childIdsByParent) {
+function getTaskFilterCache(task) {
   const tagText = getTaskTagText(task);
-  const predecessorText = getTaskDependencyText(getPredecessorIds(task), tasksById);
-  const successorText = getTaskDependencyText(childIdsByParent.get(task.id) || [], tasksById);
   const commentText = getTaskCommentText(task);
   const subtaskText = getTaskSubtaskText(task);
   const formattedStartDate = formatDate(task.startdatum);
@@ -880,9 +854,7 @@ function getTaskFilterCache(task, tasksById, childIdsByParent) {
     formattedDeletedAt,
     formattedDueDate,
     formattedStartDate,
-    predecessorText,
     subtaskText,
-    successorText,
     tagText,
     searchableTaskValues: [
       task.taskCode,
@@ -893,8 +865,6 @@ function getTaskFilterCache(task, tasksById, childIdsByParent) {
       tagText,
       getEffectivePrio(task.prio),
       getDisplayStatus(task),
-      predecessorText,
-      successorText,
       task.startdatum,
       formattedStartDate,
       task.faellig,
@@ -903,7 +873,7 @@ function getTaskFilterCache(task, tasksById, childIdsByParent) {
   };
 }
 
-function sortTasksWithFilters(tasks, columnFilters, tasksById = new Map(), childIdsByParent = new Map()) {
+function sortTasksWithFilters(tasks, columnFilters) {
   const sorters = [
     { field: "taskCodeSort", getValue: (task) => task.taskCode },
     { field: "prioSort", getValue: (task) => PRIO_ORDER[getEffectivePrio(task.prio)] ?? 99 },
@@ -911,8 +881,6 @@ function sortTasksWithFilters(tasks, columnFilters, tasksById = new Map(), child
     { field: "taskSort", getValue: (task) => task.task },
     { field: "beschreibungSort", getValue: (task) => `${task.beschreibung} ${getTaskCommentText(task)}` },
     { field: "subtaskSort", getValue: (task) => getTaskSubtaskText(task) },
-    { field: "predecessorSort", getValue: (task) => getTaskDependencyText(getPredecessorIds(task), tasksById) },
-    { field: "successorSort", getValue: (task) => getTaskDependencyText(childIdsByParent.get(task.id) || [], tasksById) },
     { field: "googleStatusSort", getValue: (task) => getDisplayStatus(task) },
     { field: "startdatumSort", getValue: (task) => task.startdatum, type: "date" },
     { field: "faelligSort", getValue: (task) => task.faellig, type: "date" },
@@ -1089,15 +1057,6 @@ function hasTag(task, tag) {
   return normalizeTags(task.tags).some(taskTag => taskTag.toLowerCase() === normalizedTag);
 }
 
-function normalizeTaskId(value) {
-  return typeof value === "string" ? value : "";
-}
-
-function normalizeTaskIds(values) {
-  const list = Array.isArray(values) ? values : values ? [values] : [];
-  return Array.from(new Set(list.map(normalizeTaskId).filter(Boolean)));
-}
-
 function formatSubtaskForDisplay(subtask, index) {
   const normalizedSubtask = normalizeSubtask(subtask);
   if (!normalizedSubtask) return "";
@@ -1110,10 +1069,6 @@ function formatSubtaskForDisplay(subtask, index) {
 
 function hasOpenSubtasks(task) {
   return normalizeSubtasks(task.subtasks).some(subtask => !subtask.done);
-}
-
-function getPredecessorIds(task) {
-  return normalizeTaskIds(task.dependsOnTaskIds?.length ? task.dependsOnTaskIds : task.dependsOnTaskId);
 }
 
 function formatTaskCode(number) {
@@ -1263,8 +1218,6 @@ function normalizeTask(task) {
     impact,
     prio,
     taskCode: normalizeText(task.taskCode),
-    dependsOnTaskIds: normalizeTaskIds(task.dependsOnTaskIds?.length ? task.dependsOnTaskIds : task.dependsOnTaskId),
-    dependsOnTaskId: normalizeTaskIds(task.dependsOnTaskIds?.length ? task.dependsOnTaskIds : task.dependsOnTaskId)[0] || "",
     task: truncateText(normalizeText(task.task), TEXT_LIMITS.task.max),
     beschreibung: truncateText(normalizeText(task.beschreibung), TEXT_LIMITS.description.max),
     comments: normalizeComments(task.comments),
@@ -1294,8 +1247,6 @@ function taskToRow(task, userId) {
     risiko: task.risiko,
     impact: task.impact,
     prio: task.prio,
-    depends_on_task_id: getPredecessorIds(task)[0] || null,
-    depends_on_task_ids: getPredecessorIds(task),
     task: task.task,
     beschreibung: task.beschreibung,
     comments: normalizeComments(task.comments),
@@ -1317,8 +1268,6 @@ function rowToTask(row) {
     risiko: row.risiko,
     impact: row.impact,
     prio: row.prio,
-    dependsOnTaskIds: normalizeTaskIds(row.depends_on_task_ids?.length ? row.depends_on_task_ids : row.depends_on_task_id),
-    dependsOnTaskId: normalizeTaskIds(row.depends_on_task_ids?.length ? row.depends_on_task_ids : row.depends_on_task_id)[0] || "",
     task: row.task,
     beschreibung: row.beschreibung,
     comments: normalizeComments(row.comments),
@@ -1406,24 +1355,17 @@ function mergeRemoteAndLocalTasks(remoteTasks, localTasks) {
     const localSubtasks = normalizeSubtasks(localTask?.subtasks);
     const localComments = normalizeComments(localTask?.comments);
     const localTags = normalizeTags(localTask?.tags);
-    const localPredecessorIds = getPredecessorIds(localTask || {});
-    const remotePredecessorIds = getPredecessorIds(remoteTask);
     const shouldUseLocalSubtasks = normalizeSubtasks(remoteTask.subtasks).length === 0 && localSubtasks.length > 0;
     const shouldUseLocalComments = normalizeComments(remoteTask.comments).length === 0 && localComments.length > 0;
     const shouldUseLocalTags = normalizeTags(remoteTask.tags).length === 0 && localTags.length > 0;
-    const shouldUseLocalPredecessors =
-      remotePredecessorIds.length <= 1 && localPredecessorIds.length > remotePredecessorIds.length;
 
-    if (!shouldUseLocalSubtasks && !shouldUseLocalComments && !shouldUseLocalTags && !shouldUseLocalPredecessors) return remoteTask;
+    if (!shouldUseLocalSubtasks && !shouldUseLocalComments && !shouldUseLocalTags) return remoteTask;
 
-    const nextPredecessorIds = shouldUseLocalPredecessors ? localPredecessorIds : remotePredecessorIds;
     return {
       ...remoteTask,
       subtasks: shouldUseLocalSubtasks ? localSubtasks : remoteTask.subtasks,
       comments: shouldUseLocalComments ? localComments : remoteTask.comments,
-      tags: shouldUseLocalTags ? localTags : remoteTask.tags,
-      dependsOnTaskIds: nextPredecessorIds,
-      dependsOnTaskId: nextPredecessorIds[0] || ""
+      tags: shouldUseLocalTags ? localTags : remoteTask.tags
     };
   });
 
@@ -1454,16 +1396,14 @@ async function saveRemoteTasks(tasks, userId) {
   const activeTasks = pruneExpiredDeletedTasks(tasks);
   const expiredIds = tasks.filter(isDeletedExpired).map(task => task.id);
   const rows = activeTasks.map(task => taskToRow(task, userId));
-  const rowsWithoutMultiDepends = rows.map(({ depends_on_task_ids: _dependsOnTaskIds, ...row }) => row);
   const rowsWithoutSubtasks = rows.map(({ subtasks: _subtasks, ...row }) => row);
   const rowsWithoutCompletedAt = rows.map(({ completed_at: _completedAt, ...row }) => row);
   const rowsWithoutTags = rows.map(({ tags: _tags, ...row }) => row);
   const rowsWithoutDeletedAt = rows.map(({ deleted_at: _deletedAt, ...row }) => row);
   const rowsWithoutComments = rows.map(({ comments: _comments, ...row }) => row);
   const rowsWithoutCreatedAt = rows.map(({ created_at: _createdAt, ...row }) => row);
-  const legacyRows = rows.map(({ depends_on_task_ids: _dependsOnTaskIds, subtasks: _subtasks, completed_at: _completedAt, tags: _tags, deleted_at: _deletedAt, comments: _comments, created_at: _createdAt, ...row }) => row);
+  const legacyRows = rows.map(({ subtasks: _subtasks, completed_at: _completedAt, tags: _tags, deleted_at: _deletedAt, comments: _comments, created_at: _createdAt, ...row }) => row);
   const hasSubtaskData = rows.some(row => normalizeSubtasks(row.subtasks).length > 0);
-  const hasMultiPredecessorData = rows.some(row => normalizeTaskIds(row.depends_on_task_ids).length > 1);
   const hasCompletedAtData = rows.some(row => row.completed_at);
   const hasTagData = rows.some(row => normalizeTags(row.tags).length > 0);
   const hasDeletedAtData = rows.some(row => row.deleted_at);
@@ -1477,11 +1417,6 @@ async function saveRemoteTasks(tasks, userId) {
     const { error: upsertError } = await supabase.from("tasks").upsert(rows);
     if (upsertError) {
       const upsertMessage = String(upsertError.message || "").toLowerCase();
-      if (!hasMultiPredecessorData) {
-        const { error: noMultiDependsUpsertError } = await supabase.from("tasks").upsert(rowsWithoutMultiDepends);
-        if (!noMultiDependsUpsertError) return;
-      }
-
       if (hasTagData && upsertMessage.includes("tags")) {
         throw new Error("The Supabase schema must first be extended with tags, otherwise tags would be lost.");
       }
@@ -1525,10 +1460,6 @@ async function saveRemoteTasks(tasks, userId) {
 
       const { error: noSubtasksUpsertError } = await supabase.from("tasks").upsert(rowsWithoutSubtasks);
       if (!noSubtasksUpsertError) return;
-
-      if (hasMultiPredecessorData) {
-        throw new Error("The Supabase schema must first be extended with depends_on_task_ids, otherwise multiple predecessors would be lost.");
-      }
 
       const { error: legacyUpsertError } = await supabase.from("tasks").upsert(legacyRows);
       if (legacyUpsertError) throw upsertError;
@@ -2636,90 +2567,6 @@ function applyCriteriaChange(task, field, value) {
   return next;
 }
 
-function getTaskOptions(tasks, excludedTaskId = "") {
-  return sortTasks(tasks)
-    .filter(task => task.id !== excludedTaskId && !isDone(task) && !isDeleted(task) && normalizeText(task.task))
-    .map(task => ({ id: task.id, label: `${task.taskCode}: ${task.task}` }));
-}
-
-function getDependencyTask(taskId, tasks) {
-  if (!taskId) return null;
-  return tasks.find(task => task.id === taskId) || null;
-}
-
-function getDependencyTasks(taskIds, tasksById) {
-  return normalizeTaskIds(taskIds).map(taskId => tasksById.get(taskId)).filter(Boolean);
-}
-
-function getTaskRelation(task, childIdsByParent, tasksById) {
-  const predecessorIds = getPredecessorIds(task);
-  const childIds = childIdsByParent.get(task.id) || [];
-  const parentTasks = predecessorIds.map(id => tasksById.get(id)).filter(task => task && !isDone(task) && !isDeleted(task));
-  const parentTask = parentTasks[0] || null;
-  const childTasks = childIds.map(id => tasksById.get(id)).filter(task => task && !isDone(task) && !isDeleted(task));
-  const hasParent = parentTasks.length > 0;
-  const hasChildren = childTasks.length > 0;
-  const parentTargets = parentTasks.map(parent => ({
-    id: parent.id,
-    code: parent.taskCode,
-    title: parent.task,
-    type: "Blockiert durch"
-  }));
-  const childTargets = childTasks.map(childTask => ({
-    id: childTask.id,
-    code: childTask.taskCode,
-    title: childTask.task,
-    type: "Blockiert"
-  }));
-
-  if (hasParent && hasChildren) {
-    return {
-      symbol: "↕",
-      label: `Blockiert durch ${parentTargets.length}, blockiert ${childTargets.length}`,
-      targetId: parentTask?.id || "",
-      targetCode: parentTask?.taskCode || "",
-      targets: [...parentTargets, ...childTargets]
-    };
-  }
-
-  if (hasParent) {
-    return {
-      symbol: "↑",
-      label: parentTargets.length === 1 ? `Blockiert durch ${parentTask.taskCode}` : `Blockiert durch ${parentTargets.length} Tasks`,
-      targetId: parentTask?.id || "",
-      targetCode: parentTask?.taskCode || "",
-      targets: parentTargets
-    };
-  }
-
-  if (hasChildren) {
-    const firstChildTask = childTasks[0];
-    return {
-      symbol: "↓",
-      label: childTargets.length === 1 && firstChildTask ? `Blockiert ${firstChildTask.taskCode}` : `Blockiert ${childTargets.length} Tasks`,
-      targetId: childIds[0],
-      targetCode: firstChildTask?.taskCode || "",
-      targets: childTargets
-    };
-  }
-
-  return null;
-}
-
-function getOpenPredecessorTasks(task, tasksById) {
-  return getPredecessorIds(task)
-    .map(taskId => tasksById.get(taskId))
-    .filter(predecessor => predecessor && !isDone(predecessor) && !isDeleted(predecessor));
-}
-
-function getPredecessorCompletionBlockMessage(task, tasksById) {
-  const openPredecessors = getOpenPredecessorTasks(task, tasksById);
-  if (openPredecessors.length === 0) return "";
-
-  const predecessorCodes = openPredecessors.map(predecessor => predecessor.taskCode).filter(Boolean).join(", ");
-  return `Task can only be completed after these predecessors are done: ${predecessorCodes}`;
-}
-
 function getSubtaskCompletionBlockMessage(task) {
   return hasOpenSubtasks(task) ? "Task can only be completed after all subtasks are done." : "";
 }
@@ -2750,23 +2597,6 @@ function getSubtaskDateValidationMessage(task) {
   return invalidMessages.length > 0
     ? `Subtask dates do not fit the parent task: ${invalidMessages.join("; ")}.`
     : "";
-}
-
-function getRelationTargets(taskIds, tasksById, type) {
-  return taskIds
-    .map(taskId => tasksById.get(taskId))
-    .filter(task => task && !isDone(task) && !isDeleted(task))
-    .map(task => ({ id: task.id, code: task.taskCode, title: task.task, type }));
-}
-
-function addPredecessorIds(task, ids) {
-  const nextIds = normalizeTaskIds([...getPredecessorIds(task), ...ids]);
-  return { ...task, dependsOnTaskIds: nextIds, dependsOnTaskId: nextIds[0] || "" };
-}
-
-function removePredecessorId(task, id) {
-  const nextIds = getPredecessorIds(task).filter(taskId => taskId !== id);
-  return { ...task, dependsOnTaskIds: nextIds, dependsOnTaskId: nextIds[0] || "" };
 }
 
 function updateSubtaskAt(subtasks, index, value) {
@@ -2803,8 +2633,6 @@ function getEditableTaskSnapshot(task) {
     comments: normalizeComments(task.comments),
     subtasks: normalizeSubtasks(task.subtasks),
     tags: normalizeTags(task.tags),
-    dependsOnTaskIds: normalizeTaskIds(task.dependsOnTaskIds),
-    successorTaskIds: normalizeTaskIds(task.successorTaskIds),
     googleStatus: task.googleStatus,
     startdatum: normalizeDateValue(task.startdatum),
     faellig: normalizeDateValue(task.faellig),
@@ -2869,14 +2697,11 @@ function escapeCsvValue(value) {
 function tasksToCsv(tasks) {
   const sortedTasks = sortTasks(tasks);
   const rows = sortedTasks.map(task => {
-    const dependencyTasks = getPredecessorIds(task).map(taskId => getDependencyTask(taskId, tasks)).filter(Boolean);
     const row = {
       ...task,
       comments: JSON.stringify(normalizeComments(task.comments)),
       subtasks: normalizeSubtasks(task.subtasks).map(formatSubtaskForText).join("|"),
-      tags: normalizeTags(task.tags).join("|"),
-      dependsOnTaskCode: dependencyTasks[0]?.taskCode || "",
-      dependsOnTaskCodes: dependencyTasks.map(dependencyTask => dependencyTask.taskCode).join("|")
+      tags: normalizeTags(task.tags).join("|")
     };
 
     return CSV_COLUMNS.map(column => escapeCsvValue(row[column])).join(",");
@@ -2945,28 +2770,9 @@ function csvToTasks(text) {
     )
     .filter(task => normalizeText(task.task));
 
-  const normalizedTasks = prepareTaskList(
+  return prepareTaskList(
     importedTasks.map(task => normalizeTask({ ...task, id: crypto.randomUUID() }))
   );
-  const idsByTaskCode = new Map(normalizedTasks.map(task => [task.taskCode, task.id]));
-
-  return normalizedTasks.map((task, index) => ({
-    ...task,
-    dependsOnTaskIds: normalizeTaskIds([
-      idsByTaskCode.get(importedTasks[index].dependsOnTaskCode) || "",
-      ...normalizeText(importedTasks[index].dependsOnTaskCodes)
-        .split("|")
-        .map(taskCode => idsByTaskCode.get(taskCode.trim()))
-        .filter(Boolean)
-    ]),
-    dependsOnTaskId: normalizeTaskIds([
-      idsByTaskCode.get(importedTasks[index].dependsOnTaskCode) || "",
-      ...normalizeText(importedTasks[index].dependsOnTaskCodes)
-        .split("|")
-        .map(taskCode => idsByTaskCode.get(taskCode.trim()))
-        .filter(Boolean)
-    ])[0] || ""
-  }));
 }
 
 export default function App() {
@@ -3541,30 +3347,20 @@ export default function App() {
     };
   }, [highlightedTaskId]);
 
-  const childIdsByParent = useMemo(() => {
-    const idsByParent = new Map();
-    tasks.forEach(task => {
-      getPredecessorIds(task).forEach(predecessorId => {
-        idsByParent.set(predecessorId, [...(idsByParent.get(predecessorId) || []), task.id]);
-      });
-    });
-    return idsByParent;
-  }, [tasks]);
-  const tasksById = useMemo(() => new Map(tasks.map(task => [task.id, task])), [tasks]);
   const taskFilterCacheById = useMemo(() => {
     const cacheById = new Map();
     tasks.forEach(task => {
-      cacheById.set(task.id, getTaskFilterCache(task, tasksById, childIdsByParent));
+      cacheById.set(task.id, getTaskFilterCache(task));
     });
     return cacheById;
-  }, [tasks, tasksById, childIdsByParent]);
+  }, [tasks]);
 
   const visibleTasks = useMemo(() => {
     const sortedTasks = activeAppTab === NEWEST_TAB
       ? sortTasksByCreatedAt(tasks)
-      : sortTasksWithFilters(tasks, columnFilters, tasksById, childIdsByParent);
+      : sortTasksWithFilters(tasks, columnFilters);
     return sortedTasks.filter(task => {
-      const cache = taskFilterCacheById.get(task.id) || getTaskFilterCache(task, tasksById, childIdsByParent);
+      const cache = taskFilterCacheById.get(task.id) || getTaskFilterCache(task);
       const matchesPrio =
         columnFilters.prio === "Alle" || getEffectivePrio(task.prio) === columnFilters.prio;
       const matchesViewStatus = activeAppTab === DONE_TAB
@@ -3583,8 +3379,6 @@ export default function App() {
       const matchesTagFilter = columnFilters.tagFilter === "-"
         ? !tagText
         : includesFilter(tagText, columnFilters.tagFilter);
-      const predecessorText = cache.predecessorText;
-      const successorText = cache.successorText;
       if (isOverviewSearchActive) {
         return matchesGlobalTaskSearch(cache.searchableTaskValues, columnFilters.overviewSearch, {
           deleted: isDeleted(task),
@@ -3602,8 +3396,6 @@ export default function App() {
         includesFilter(task.task, columnFilters.task) &&
         (includesFilter(task.beschreibung, columnFilters.beschreibung) || includesFilter(cache.commentText, columnFilters.beschreibung)) &&
         includesFilter(cache.subtaskText, columnFilters.subtaskFilter) &&
-        includesFilter(predecessorText, columnFilters.predecessorFilter) &&
-        includesFilter(successorText, columnFilters.successorFilter) &&
         (includesFilter(task.startdatum, columnFilters.startdatum) || includesFilter(cache.formattedStartDate, columnFilters.startdatum)) &&
         (includesFilter(task.faellig, columnFilters.faellig) || includesFilter(cache.formattedDueDate, columnFilters.faellig)) &&
         (includesFilter(task.completedAt, columnFilters.completedAt) || includesFilter(cache.formattedCompletedAt, columnFilters.completedAt)) &&
@@ -3613,7 +3405,7 @@ export default function App() {
         matchesDeletedScope
       );
     });
-  }, [tasks, columnFilters, isOverviewSearchActive, activeTagScope, activeAppTab, isKanbanView, tasksById, childIdsByParent, taskFilterCacheById]);
+  }, [tasks, columnFilters, isOverviewSearchActive, activeTagScope, activeAppTab, isKanbanView, taskFilterCacheById]);
 
   const visibleTasksWithEditingTask = useMemo(() => {
     if (!editingId) return visibleTasks;
@@ -3852,7 +3644,6 @@ export default function App() {
     };
   }, [tasks, activeTagScope]);
 
-  const dependencyOptions = useMemo(() => getTaskOptions(tasks), [tasks]);
   const taskCodeOptions = useMemo(() => sortTasks(tasks).map(task => task.taskCode).filter(Boolean), [tasks]);
   const tagOptions = useMemo(() => {
     return normalizeTagCatalog(tagCatalog).sort((first, second) => first.localeCompare(second, "de", { sensitivity: "base" }));
@@ -3881,8 +3672,6 @@ export default function App() {
       task: "Task",
       beschreibung: "Description",
       subtaskFilter: "Subtasks",
-      predecessorFilter: "Predecessors",
-      successorFilter: "Successors",
       googleStatus: "Status",
       startdatum: "Start",
       faellig: "Due",
@@ -3894,8 +3683,6 @@ export default function App() {
       taskSort: "Task sorted",
       beschreibungSort: "Description sorted",
       subtaskSort: "Subtasks sorted",
-      predecessorSort: "Predecessors sorted",
-      successorSort: "Successors sorted",
       googleStatusSort: "Status sorted",
       startdatumSort: "Start sorted",
       faelligSort: "Due sorted",
@@ -3956,11 +3743,6 @@ export default function App() {
       editDraft,
       editFocusField: editingId === task.id ? editFocusField : "",
       editSectionDefaults: activeEditSectionDefaults,
-      dependencyTask: getDependencyTasks(getPredecessorIds(task), tasksById).filter(dependency => !isDone(dependency) && !isDeleted(dependency))[0] || null,
-      predecessorTargets: getRelationTargets(getPredecessorIds(task), tasksById, "Predecessors"),
-      successorTargets: getRelationTargets(childIdsByParent.get(task.id) || [], tasksById, "Successors"),
-      relation: getTaskRelation(task, childIdsByParent, tasksById),
-      dependencyOptions: getTaskOptions(tasks, task.id),
       tagOptions,
       onStartEdit: startEdit,
       onCancelEdit: cancelEditWithPrompt,
@@ -4227,20 +4009,11 @@ export default function App() {
     if (!draft.task.trim()) return;
     const nextId = crypto.randomUUID();
     const nextTaskCode = getNextTaskCode(tasks);
-    const openTaskIds = new Set(tasks.filter(task => !isDone(task) && !isDeleted(task)).map(task => task.id));
-    const successorIds = normalizeTaskIds(draft.successorTaskIds).filter(id => openTaskIds.has(id));
-    const predecessorIds = normalizeTaskIds(draft.dependsOnTaskIds).filter(id => openTaskIds.has(id));
 
     const nextTasks = assignMissingTaskCodes([
       ...tasks,
-      normalizeTask({ ...draft, id: nextId, taskCode: nextTaskCode, task: draft.task.trim(), dependsOnTaskIds: predecessorIds, createdAt: new Date().toISOString() })
-    ]).map(task => successorIds.includes(task.id) ? addPredecessorIds(task, [nextId]) : task);
-    const cycleMessage = getDependencyCycleMessage(nextTasks);
-    if (cycleMessage) {
-      setActionMessage(cycleMessage);
-      window.alert(cycleMessage);
-      return;
-    }
+      normalizeTask({ ...draft, id: nextId, taskCode: nextTaskCode, task: draft.task.trim(), createdAt: new Date().toISOString() })
+    ]);
 
     updateTasksWithUndo(nextTasks);
     setDraft(createEmptyTask());
@@ -4384,13 +4157,7 @@ export default function App() {
   function enterEdit(task, focusField = "", returnView = null) {
     clearLocalEditDrafts();
     editReturnViewRef.current = returnView || editReturnViewRef.current || getCurrentViewSnapshot();
-    const nextDraft = {
-      ...task,
-      dependsOnTaskIds: getPredecessorIds(task),
-      successorTaskIds: tasks
-        .filter(candidate => getPredecessorIds(candidate).includes(task.id))
-        .map(candidate => candidate.id)
-    };
+    const nextDraft = { ...task };
     setEditingId(task.id);
     editDraftRef.current = nextDraft;
     setEditDraft(nextDraft);
@@ -4519,13 +4286,11 @@ export default function App() {
     const currentDraft = draftOverride || editDraftRef.current || editDraft;
     if (!currentDraft?.task?.trim()) return false;
     const originalTask = tasks.find(task => task.id === editingId);
-    const openTaskIds = new Set(tasks.filter(task => task.id !== editingId && !isDone(task) && !isDeleted(task)).map(task => task.id));
     const normalizedDraft = normalizeTask({
       ...currentDraft,
       task: currentDraft.task.trim(),
       comments: normalizeComments(currentDraft.comments),
-      subtasks: normalizeSubtasks(currentDraft.subtasks),
-      dependsOnTaskIds: normalizeTaskIds(currentDraft.dependsOnTaskIds).filter(id => openTaskIds.has(id))
+      subtasks: normalizeSubtasks(currentDraft.subtasks)
     });
     const subtaskDateMessage = getSubtaskDateValidationMessage(normalizedDraft);
     if (subtaskDateMessage) {
@@ -4537,13 +4302,6 @@ export default function App() {
     const isDeletingTask = originalTask && !isDeleted(originalTask) && isDeleted(normalizedDraft);
 
     if (originalTask && !isDone(originalTask) && isDone(normalizedDraft)) {
-      const blockMessage = getPredecessorCompletionBlockMessage(normalizedDraft, tasksById);
-      if (blockMessage) {
-        setActionMessage(blockMessage);
-        window.alert(blockMessage);
-        return false;
-      }
-
       const subtaskBlockMessage = getSubtaskCompletionBlockMessage(normalizedDraft);
       if (subtaskBlockMessage) {
         setActionMessage(subtaskBlockMessage);
@@ -4552,23 +4310,8 @@ export default function App() {
       }
     }
 
-    const nextSuccessorIds = isDone(normalizedDraft)
-      ? []
-      : normalizeTaskIds(currentDraft.successorTaskIds).filter(id => openTaskIds.has(id));
     const isCompletingTask = originalTask && !isDone(originalTask) && isDone(normalizedDraft);
-    const nextTasks = tasks.map(task => {
-      if (task.id === editingId) return normalizedDraft;
-      if (isCompletingTask) return removePredecessorId(task, editingId);
-      if (nextSuccessorIds.includes(task.id)) return addPredecessorIds(task, [editingId]);
-
-      return removePredecessorId(task, editingId);
-    });
-    const cycleMessage = getDependencyCycleMessage(nextTasks);
-    if (cycleMessage) {
-      setActionMessage(cycleMessage);
-      window.alert(cycleMessage);
-      return false;
-    }
+    const nextTasks = tasks.map(task => task.id === editingId ? normalizedDraft : task);
 
     updateTasksWithUndo(nextTasks);
     if (isDeletingTask || isCompletingTask) {
@@ -4577,14 +4320,9 @@ export default function App() {
       return true;
     }
     if (keepEditing) {
-      const nextDraft = {
-        ...normalizedDraft,
-        dependsOnTaskIds: getPredecessorIds(normalizedDraft),
-        successorTaskIds: nextSuccessorIds
-      };
-      editDraftRef.current = nextDraft;
-      setEditDraft(nextDraft);
-      setEditBaseline(nextDraft);
+      editDraftRef.current = normalizedDraft;
+      setEditDraft(normalizedDraft);
+      setEditBaseline(normalizedDraft);
       lastEditDraftFieldRef.current = "";
       return true;
     }
@@ -4601,14 +4339,7 @@ export default function App() {
     if (!confirmed || !targetTask) return;
 
     const deletedTask = normalizeTask({ ...targetTask, deletedAt: getTodayDateValue() });
-    updateTasksWithUndo(current =>
-      current
-        .map(task => task.id === id ? deletedTask : task)
-        .map(task => {
-          const nextIds = getPredecessorIds(task).filter(taskId => taskId !== id);
-          return { ...task, dependsOnTaskIds: nextIds, dependsOnTaskId: nextIds[0] || "" };
-        })
-    );
+    updateTasksWithUndo(current => current.map(task => task.id === id ? deletedTask : task));
     setColumnFilters(getDefaultColumnFilters(activeAppTab));
     cancelEdit();
     setHighlightedTaskId(null);
@@ -4628,13 +4359,6 @@ export default function App() {
     if (targetTask && isDeleted(targetTask)) return;
 
     if (targetTask && !isDone(targetTask)) {
-      const blockMessage = getPredecessorCompletionBlockMessage(targetTask, tasksById);
-      if (blockMessage) {
-        setActionMessage(blockMessage);
-        window.alert(blockMessage);
-        return;
-      }
-
       const subtaskBlockMessage = getSubtaskCompletionBlockMessage(targetTask);
       if (subtaskBlockMessage) {
         setActionMessage(subtaskBlockMessage);
@@ -4650,10 +4374,7 @@ export default function App() {
     });
 
     updateTasksWithUndo(current =>
-      current.map(task => {
-        if (task.id === id) return nextTargetTask;
-        return isDone(targetTask) ? task : removePredecessorId(task, id);
-      })
+      current.map(task => task.id === id ? nextTargetTask : task)
     );
     if (isDone(targetTask)) {
       showTaskView(nextTargetTask);
@@ -4675,13 +4396,6 @@ export default function App() {
     }
 
     if (isCompletingTask) {
-      const blockMessage = getPredecessorCompletionBlockMessage(nextTask, tasksById);
-      if (blockMessage) {
-        setActionMessage(blockMessage);
-        window.alert(blockMessage);
-        return;
-      }
-
       const subtaskBlockMessage = getSubtaskCompletionBlockMessage(nextTask);
       if (subtaskBlockMessage) {
         setActionMessage(subtaskBlockMessage);
@@ -4691,10 +4405,7 @@ export default function App() {
     }
 
     updateTasksWithUndo(current =>
-      current.map(task => {
-        if (task.id === id) return nextTask;
-        return isCompletingTask ? removePredecessorId(task, id) : task;
-      })
+      current.map(task => task.id === id ? nextTask : task)
     );
     if (field === "googleStatus" && value === "Gelöscht") {
       setColumnFilters(getDefaultColumnFilters(activeAppTab));
@@ -5205,24 +4916,6 @@ export default function App() {
         <SortToggle value={columnFilters.subtaskSort} onChange={value => updateColumnFilter("subtaskSort", value)} ariaLabel="Sort subtasks" />
       </label>
       <label>
-        <span>Predecessors</span>
-        <input
-          value={columnFilters.predecessorFilter}
-          onChange={event => updateColumnFilter("predecessorFilter", event.target.value)}
-          placeholder="All"
-        />
-        <SortToggle value={columnFilters.predecessorSort} onChange={value => updateColumnFilter("predecessorSort", value)} ariaLabel="Sort predecessors" />
-      </label>
-      <label>
-        <span>Successors</span>
-        <input
-          value={columnFilters.successorFilter}
-          onChange={event => updateColumnFilter("successorFilter", event.target.value)}
-          placeholder="All"
-        />
-        <SortToggle value={columnFilters.successorSort} onChange={value => updateColumnFilter("successorSort", value)} ariaLabel="Sort successors" />
-      </label>
-      <label>
         <span>Status</span>
         <select value={columnFilters.googleStatus} onChange={event => updateColumnFilter("googleStatus", event.target.value)}>
           {STATUS_FILTER_OPTIONS.map(option => (
@@ -5582,23 +5275,6 @@ export default function App() {
               />
             </div>
 
-            <div className="formRow compact captureAdvancedFields">
-              <TaskMultiDependencyField
-                label="Predecessors"
-                values={draft.dependsOnTaskIds}
-                options={dependencyOptions}
-                onChange={value => updateDraft("dependsOnTaskIds", value)}
-                title={getTooltip("dependsOnTaskIds", normalizeTaskIds(draft.dependsOnTaskIds).length ? `${normalizeTaskIds(draft.dependsOnTaskIds).length} selected` : "-")}
-              />
-              <TaskMultiDependencyField
-                label="Successors"
-                values={draft.successorTaskIds}
-                options={dependencyOptions}
-                onChange={value => updateDraft("successorTaskIds", value)}
-                title={getTooltip("successorTaskIds", normalizeTaskIds(draft.successorTaskIds).length ? `${normalizeTaskIds(draft.successorTaskIds).length} selected` : "-")}
-              />
-            </div>
-
             <div className="derivedValuesRow captureDerivedRow" aria-label="Derived values">
               <span>
                 Prio: <strong className={`prio ${getPrioClass(getEffectivePrio(draft.prio))}`} data-prio={getEffectivePrio(draft.prio)} title={getTooltipForTask(draft, "prio", getEffectivePrio(draft.prio))}>{getDisplayValue(getEffectivePrio(draft.prio))}</strong>
@@ -5791,8 +5467,7 @@ export default function App() {
                   <li>Cards use fixed badge cells so values stay aligned across tasks. Phones always use three badge columns; browser list, browser edit, and browser Kanban badge columns can be configured separately in Options.</li>
                   <li>Empty values show a dash. Start and Due keep their labels visible and may wrap to two lines on phones after the colon so the date stays visible.</li>
                   <li>Reached start dates, due-today dates, and overdue due dates are shown by coloring the date value red instead of adding separate badges.</li>
-                  <li>Predecessors and Successors are shown as labeled clickable text in the card details outside edit mode and can be clicked to jump to the related task while keeping the current view. In Minimum detail mode, card details and the Additional details label stay hidden; in Maximum detail mode, badges are visible and cards with description, subtasks, or comments show the labeled detail panels directly, with no Additional details label needed.</li>
-                  <li>Adjacent icons use the same size. Share, delete, and completion are the card action icons; relation arrow icons are intentionally not shown. The Share icon includes a direct task URL such as ?task-id=T-123, which opens the task in Maximum detail view after login. Clicking a task ID while the session is in Minimum mode locally opens just that card's badges, without changing the global view mode or affecting any other card; its description/subtasks/comments still open through a collapsible Additional details label below the badges, unlike true Maximum mode where those panels show directly with no label to click. The save icon is a disk, completion uses a check, delete uses trash, close uses x, and a due-reminder warning uses a red exclamation mark near the task ID.</li>
+                  <li>Adjacent icons use the same size. Share, delete, and completion are the card action icons. The Share icon includes a direct task URL such as ?task-id=T-123, which opens the task in Maximum detail view after login. Clicking a task ID while the session is in Minimum mode locally opens just that card's badges, without changing the global view mode or affecting any other card; its description/subtasks/comments still open through a collapsible Additional details label below the badges, unlike true Maximum mode where those panels show directly with no label to click. The save icon is a disk, completion uses a check, delete uses trash, close uses x, and a due-reminder warning uses a red exclamation mark near the task ID.</li>
                 </ul>
               </section>
 
@@ -5804,7 +5479,6 @@ export default function App() {
                   <li>Normal task changes are saved with the task-level disk icon. Description, comment, and subtask edits each use their own local disk icon where the edit happens; while any local text draft is unsaved, both the local disk and the task-level disk are highlighted, and saving either the local draft or all changes clears the relevant highlighted icons. The local description x asks whether to save or discard that description draft; clicking outside leaves the inline editor open.</li>
                   <li>If you leave an edit surface with unsaved changes, the app asks whether to save or discard. Completing and deleting tasks keep their explicit confirmation prompts.</li>
                   <li>Description supports paragraphs, bullet points, and clickable web links. Long descriptions are previewed and can be opened in a popup.</li>
-                  <li>Predecessor and Successor fields use searchable checkbox dropdowns: type to narrow the task list, or keep selecting from the dropdown as usual.</li>
                   <li>Text fields guide length without blocking fast capture too early: task names wrap in a wider controlled, non-resizable field while capturing and editing, other multiline fields scroll internally when needed without manual resize handles, task names warn at 80/125 and stop at 250, subtasks warn at 250 and stop at 1000, comments warn at 500 and stop at 5000, descriptions stop at 20000, and tags stop at 24.</li>
                 </ul>
               </section>
@@ -6181,72 +5855,6 @@ function TaskDependencyField({ label, value, options, onChange }) {
         ))}
       </select>
     </label>
-  );
-}
-
-function TaskMultiDependencyField({ label, values, options, onChange, title = "" }) {
-  const selectedValues = normalizeTaskIds(values);
-  const [isOpen, setIsOpen] = useState(false);
-  const [searchText, setSearchText] = useState("");
-  const fieldRef = useRef(null);
-  const selectedOptions = options.filter(option => selectedValues.includes(option.id));
-  const normalizedSearchText = normalizeText(searchText).toLowerCase();
-  const visibleOptions = normalizedSearchText
-    ? options.filter(option => normalizeText(option.label).toLowerCase().includes(normalizedSearchText))
-    : options;
-  const triggerText =
-    selectedOptions.length === 0
-      ? "None"
-      : selectedOptions.length === 1
-        ? selectedOptions[0].label
-        : `${selectedOptions.length} selected`;
-
-  useCloseOnOutsidePointer(isOpen, [fieldRef], () => setIsOpen(false));
-
-  function toggleValue(value) {
-    onChange(selectedValues.includes(value)
-      ? selectedValues.filter(selectedValue => selectedValue !== value)
-      : [...selectedValues, value]);
-  }
-
-  return (
-    <fieldset ref={fieldRef} className="multiDependencyField" title={title}>
-      <legend>{label}</legend>
-      <button
-        type="button"
-        className="multiDependencyTrigger"
-        onClick={() => setIsOpen(current => !current)}
-        aria-expanded={isOpen}
-        title={title}
-      >
-        {triggerText}
-      </button>
-      {isOpen && (
-        <div className="multiDependencyMenu">
-          <input
-            className="multiDependencySearch"
-            type="search"
-            value={searchText}
-            onChange={event => setSearchText(event.target.value)}
-            placeholder="Search"
-            aria-label={`Search ${label.toLowerCase()}`}
-            autoFocus
-          />
-          {visibleOptions.map(option => (
-            <label key={option.id}>
-              <input
-                type="checkbox"
-                checked={selectedValues.includes(option.id)}
-                onChange={() => toggleValue(option.id)}
-              />
-              <span>{option.label}</span>
-            </label>
-          ))}
-          {options.length === 0 && <span className="multiDependencyEmpty">No selection</span>}
-          {options.length > 0 && visibleOptions.length === 0 && <span className="multiDependencyEmpty">No matches</span>}
-        </div>
-      )}
-    </fieldset>
   );
 }
 
@@ -6922,57 +6530,6 @@ function TagList({ tags }) {
   );
 }
 
-function RelationTargetPicker({ targets, emptyLabel = "None", onShowTask }) {
-  const [isOpen, setIsOpen] = useState(false);
-  const pickerRef = useRef(null);
-  useCloseOnOutsidePointer(isOpen, [pickerRef], () => setIsOpen(false));
-
-  if (targets.length === 0) {
-    return <span>{emptyLabel}</span>;
-  }
-
-  const firstTarget = targets[0];
-  const label = targets.length === 1 ? firstTarget.code : `${targets.length} Tasks`;
-  const title = targets.length === 1 ? `${firstTarget.type}: ${firstTarget.code}` : `${targets.length} ${firstTarget.type}`;
-
-  function handlePrimaryClick() {
-    if (targets.length === 1) {
-      onShowTask(firstTarget.id);
-      return;
-    }
-
-    setIsOpen(current => !current);
-  }
-
-  return (
-    <span ref={pickerRef} className="relationPicker">
-      <span className="dependencyDisplay">
-        <button type="button" className="dependencyLink" onClick={handlePrimaryClick} title={title}>
-          {label}
-        </button>
-      </span>
-      {isOpen && targets.length > 1 && (
-        <div className="relationMenu">
-          {targets.map(target => (
-            <button
-              key={target.id}
-              type="button"
-              onClick={() => {
-                setIsOpen(false);
-                onShowTask(target.id);
-              }}
-              title={target.title}
-            >
-              <strong>{target.code}</strong>
-              <span>{target.title}</span>
-            </button>
-          ))}
-        </div>
-      )}
-    </span>
-  );
-}
-
 function getMetaTooltipIntro(label) {
   if (label === "When") return "When answers: when should we act?";
   if (label === "Prio" || label === "Priority") return "Priority answers: how important is this?";
@@ -7079,10 +6636,6 @@ function MobileTaskCard({
   hasUnsavedChanges,
   editDraft,
   editSectionDefaults,
-  dependencyTask,
-  predecessorTargets = [],
-  successorTargets = [],
-  dependencyOptions,
   tagOptions,
   onStartEdit,
   onCancelEdit,
@@ -7122,11 +6675,8 @@ function MobileTaskCard({
   const hasDescription = Boolean(normalizeText(task.beschreibung));
   const commentCount = normalizeComments(task.comments).length;
   const subtaskCount = normalizeSubtasks(task.subtasks).length;
-  const predecessorCount = predecessorTargets.length;
-  const successorCount = successorTargets.length;
   const hasComments = commentCount > 0;
   const hasSubtasks = subtaskCount > 0;
-  const hasDependencyDetails = predecessorCount > 0 || successorCount > 0;
   const hasContentDetails = hasDescription || hasComments || hasSubtasks;
   const showMetaTooltips = Boolean(getTooltip("task", task.task));
   const MobileValue = props => <MobileMetaValue showTooltip={showMetaTooltips} {...props} />;
@@ -7406,22 +6956,6 @@ function MobileTaskCard({
             <span>Due</span>
             <input type="date" value={data.faellig} onChange={event => onChange("faellig", event.target.value)} title={getTooltip("faellig", formatDate(data.faellig) || "-")} />
           </label>
-          <div className="mobileEditFull mobileEditDependencyField" title={getTooltip("dependsOnTaskIds", normalizeTaskIds(data.dependsOnTaskIds).length ? `${normalizeTaskIds(data.dependsOnTaskIds).length} selected` : "-")}>
-            <TaskMultiDependencyField
-              label="Predecessors"
-              values={data.dependsOnTaskIds}
-              options={dependencyOptions}
-              onChange={value => onChange("dependsOnTaskIds", value)}
-            />
-          </div>
-          <div className="mobileEditFull mobileEditDependencyField" title={getTooltip("successorTaskIds", normalizeTaskIds(data.successorTaskIds).length ? `${normalizeTaskIds(data.successorTaskIds).length} selected` : "-")}>
-            <TaskMultiDependencyField
-              label="Successors"
-              values={data.successorTaskIds}
-              options={dependencyOptions}
-              onChange={value => onChange("successorTaskIds", value)}
-            />
-          </div>
           </div>
         </details>
 
@@ -7631,15 +7165,6 @@ function MobileTaskCard({
       {hasContentDetails && !hideOverviewDetailsUntilDescriptionOpen && (
         alwaysExpandDetails ? (
           <div className="mobileDescriptionBlock mobileDetailsExpanded">
-            {hasDependencyDetails && (
-              <MobileDescriptionPanel title="Dependencies">
-                <MobileDependencyRelations
-                  predecessorTargets={predecessorTargets}
-                  successorTargets={successorTargets}
-                  onShowTask={onShowTask}
-                />
-              </MobileDescriptionPanel>
-            )}
             {hasDescription && (
               <MobileDescriptionPanel title="Description">
                 <DescriptionBlock text={task.beschreibung} />
@@ -7695,15 +7220,6 @@ function MobileTaskCard({
                     </MobileDescriptionPanel>
                   </>
                 )}
-                {hasDependencyDetails && (
-              <MobileDescriptionPanel title="Dependencies">
-                <MobileDependencyRelations
-                  predecessorTargets={predecessorTargets}
-                  successorTargets={successorTargets}
-                  onShowTask={onShowTask}
-                />
-              </MobileDescriptionPanel>
-            )}
             {hasDescription && (
               <MobileDescriptionPanel title="Description">
                 <DescriptionBlock text={task.beschreibung} />
@@ -7748,23 +7264,6 @@ function MobileTaskCard({
             <dd>{formatDate(task.deletedAt) || "-"}</dd>
           </div>
         )}
-        <div>
-          <dt>Predecessors</dt>
-          <dd>
-            {dependencyTask ? (
-              <button
-                type="button"
-                className="dependencyLink"
-                onClick={() => onShowTask(dependencyTask.id)}
-                title={dependencyTask.task}
-              >
-                {dependencyTask.taskCode}
-              </button>
-            ) : (
-              "None"
-            )}
-          </dd>
-        </div>
       </dl>
 
       <div className="mobileActions">
@@ -7800,27 +7299,6 @@ function MobileDescriptionPanel({ title, children }) {
         {children}
       </div>
     </section>
-  );
-}
-
-function MobileDependencyRelations({ predecessorTargets, successorTargets, onShowTask }) {
-  if (predecessorTargets.length === 0 && successorTargets.length === 0) return null;
-
-  return (
-    <div className="mobileDependencyRelations" aria-label="Task dependencies">
-      {predecessorTargets.length > 0 && (
-        <div className="mobileDependencyRelationGroup">
-          <span>Predecessors</span>
-          <RelationTargetPicker targets={predecessorTargets} onShowTask={onShowTask} />
-        </div>
-      )}
-      {successorTargets.length > 0 && (
-        <div className="mobileDependencyRelationGroup">
-          <span>Successors</span>
-          <RelationTargetPicker targets={successorTargets} onShowTask={onShowTask} />
-        </div>
-      )}
-    </div>
   );
 }
 
