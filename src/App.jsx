@@ -3917,6 +3917,10 @@ export default function App() {
       .map(([key, value]) => ({ key, label: labels[key] || key, value: formatFilterValue(key, value) }))
     ];
   }, [activeAppTab, columnFilters, isArchiveViewFilterActive]);
+  const visibleActiveFilterBadges = useMemo(
+    () => activeFilterBadges.filter(filter => filter.key !== "overviewSearch"),
+    [activeFilterBadges]
+  );
   const currentSelectionBadges = useMemo(() => {
     const scope = activeTagScope === "all" ? "All tags" : `#${activeTagScope}`;
     const mode = isKanbanView ? "Kanban" : "List";
@@ -5489,9 +5493,9 @@ export default function App() {
           </div>
         )}
 
-        {isListTab(activeAppTab) && !isSingleTaskEditMode && activeFilterBadges.length > 0 && (
+        {isListTab(activeAppTab) && !isSingleTaskEditMode && visibleActiveFilterBadges.length > 0 && (
           <div className="activeFilterBadges" aria-label="Active filters">
-            {activeFilterBadges.map(filter => (
+            {visibleActiveFilterBadges.map(filter => (
               <span key={filter.key} className="activeFilterBadge" title={`${filter.label}: ${filter.value}`}>
                 {filter.label}: {filter.value}
               </span>
