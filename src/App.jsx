@@ -38,7 +38,6 @@ const DEFAULT_VIEW_MODE_STORAGE_KEY = "task-001.default-view-mode.v2";
 const DEFAULT_MOBILE_VIEW_MODE_STORAGE_KEY = "task-001.default-mobile-view-mode.v1";
 const DEFAULT_START_TAB_STORAGE_KEY = "task-001.default-start-tab.v1";
 const DEFAULT_MOBILE_START_TAB_STORAGE_KEY = "task-001.default-mobile-start-tab.v1";
-const KANBAN_COLUMNS_STORAGE_KEY = "task-001.kanban-columns.v1";
 const SESSION_VIEW_STORAGE_KEY = "task-001.session-view.v1";
 const DELETED_RETENTION_DAYS_STORAGE_KEY = "task-001.deleted-retention-days.v1";
 
@@ -62,8 +61,6 @@ const KANBAN_COLUMNS = [
   { key: "started", title: "Doing" },
   { key: "done", title: "Done" }
 ];
-const DEFAULT_KANBAN_COLUMN_KEYS = KANBAN_COLUMNS.map(column => column.key);
-const LEGACY_KANBAN_COLUMN_KEYS = ["open", "started"];
 const KANBAN_COLUMN_STATUS = { open: "Offen", started: "Gestartet", done: "Erledigt" };
 const MAX_CARD_BADGE_COLUMNS = 8;
 const DESCRIPTION_PREVIEW_LIMIT = 128;
@@ -358,21 +355,6 @@ function valuesEqual(a, b) {
 // case overwriting local customization with it would silently discard real local preferences.
 function preferLocalWhenRemoteIsDefault(remoteValue, defaultValue, localValue) {
   return valuesEqual(remoteValue, defaultValue) ? localValue : remoteValue;
-}
-
-function normalizeKanbanColumns(value) {
-  const parsed = typeof value === "string" ? safeJsonParse(value, []) : value;
-  if (!Array.isArray(parsed)) return [...DEFAULT_KANBAN_COLUMN_KEYS];
-  const allowedKeys = new Set(DEFAULT_KANBAN_COLUMN_KEYS);
-  const normalized = parsed.filter(key => allowedKeys.has(key));
-  return normalized.length > 0 ? normalized : [...DEFAULT_KANBAN_COLUMN_KEYS];
-}
-
-function migrateKanbanColumnKeys(value) {
-  const normalized = normalizeKanbanColumns(value);
-  const isLegacyDefault = normalized.length === LEGACY_KANBAN_COLUMN_KEYS.length &&
-    LEGACY_KANBAN_COLUMN_KEYS.every(key => normalized.includes(key));
-  return isLegacyDefault ? normalizeKanbanColumns([...normalized, "done"]) : normalized;
 }
 
 function normalizeCardBadgeColumns(value) {
@@ -1440,7 +1422,6 @@ async function loadRemoteUserSettings(userId) {
         cardBadgeColumns: null,
         defaultViewModes: null,
         defaultStartTabs: null,
-        kanbanColumnKeys: null,
         upcomingBadgeDefaults: null,
         deletedRetentionDays: null
       };
@@ -1501,14 +1482,6 @@ async function loadRemoteUserSettings(userId) {
   const missingDefaultMobileStartTabColumn = defaultMobileStartTabError && String(defaultMobileStartTabError.message || "").toLowerCase().includes("default_start_tab_mobile");
   if (defaultMobileStartTabError && !missingDefaultMobileStartTabColumn) throw defaultMobileStartTabError;
 
-  const { data: kanbanColumnsData, error: kanbanColumnsError } = await supabase
-    .from("user_settings")
-    .select("kanban_columns")
-    .eq("user_id", userId)
-    .maybeSingle();
-  const missingKanbanColumnsColumn = kanbanColumnsError && String(kanbanColumnsError.message || "").toLowerCase().includes("kanban_columns");
-  if (kanbanColumnsError && !missingKanbanColumnsColumn) throw kanbanColumnsError;
-
   const { data: upcomingBadgeDefaultsData, error: upcomingBadgeDefaultsError } = await supabase
     .from("user_settings")
     .select("upcoming_badge_defaults")
@@ -1545,7 +1518,6 @@ async function loadRemoteUserSettings(userId) {
       browser: normalizeDefaultStartTab(defaultStartTabData?.default_start_tab),
       mobile: missingDefaultMobileStartTabColumn ? normalizeDefaultStartTab(defaultStartTabData?.default_start_tab) : normalizeDefaultStartTab(defaultMobileStartTabData?.default_start_tab_mobile)
     },
-    kanbanColumnKeys: missingKanbanColumnsColumn ? null : normalizeKanbanColumns(kanbanColumnsData?.kanban_columns),
     upcomingBadgeDefaults: missingUpcomingBadgeDefaultsColumn ? null : normalizeUpcomingBadgeDefaults(upcomingBadgeDefaultsData?.upcoming_badge_defaults),
     deletedRetentionDays: missingDeletedRetentionDaysColumn ? null : normalizeDeletedRetentionDays(deletedRetentionDaysData?.deleted_retention_days)
   };
@@ -1582,7 +1554,7 @@ async function updateOptionalUserSettingColumns(userId, values, missingColumnNam
   if (!missingColumnNames.some(columnName => message.includes(columnName))) throw error;
 }
 
-async function saveRemoteUserSettings(userId, selectedTagTabs, tagCatalog, tooltipsEnabled, darkModeSettings, tabLayout, cardBadgeColumns, defaultViewModes, defaultStartTabs, kanbanColumnKeys, upcomingBadgeDefaults, deletedRetentionDays) {
+async function saveRemoteUserSettings(userId, selectedTagTabs, tagCatalog, tooltipsEnabled, darkModeSettings, tabLayout, cardBadgeColumns, defaultViewModes, defaultStartTabs, upcomingBadgeDefaults, deletedRetentionDays) {
   const normalizedDarkModeSettings = normalizeDarkModeSettings(darkModeSettings);
   const { error } = await supabase
     .from("user_settings")
@@ -1633,10 +1605,6 @@ async function saveRemoteUserSettings(userId, selectedTagTabs, tagCatalog, toolt
   await updateOptionalUserSettingColumns(userId, {
     default_start_tab_mobile: normalizeDefaultStartTab(defaultStartTabs?.mobile)
   }, ["default_start_tab_mobile"]);
-
-  await updateOptionalUserSettingColumns(userId, {
-    kanban_columns: normalizeKanbanColumns(kanbanColumnKeys)
-  }, ["kanban_columns"]);
 
   await updateOptionalUserSettingColumns(userId, {
     upcoming_badge_defaults: normalizeUpcomingBadgeDefaults(upcomingBadgeDefaults)
@@ -1722,21 +1690,6 @@ function isKanbanMobileViewportNow() {
   return window.matchMedia("(max-width: 760px), (max-width: 900px) and (orientation: landscape)").matches;
 }
 
-function loadKanbanColumnKeys() {
-  try {
-    return migrateKanbanColumnKeys(JSON.parse(localStorage.getItem(KANBAN_COLUMNS_STORAGE_KEY) || "[]"));
-  } catch {
-    return [...DEFAULT_KANBAN_COLUMN_KEYS];
-  }
-}
-
-function saveKanbanColumnKeys(value) {
-  try {
-    localStorage.setItem(KANBAN_COLUMNS_STORAGE_KEY, JSON.stringify(normalizeKanbanColumns(value)));
-  } catch {
-    // Local UI preference only.
-  }
-}
 function hasDefaultViewModePreference() {
   try {
     return localStorage.getItem(DEFAULT_VIEW_MODE_STORAGE_KEY) !== null;
@@ -2677,7 +2630,6 @@ export default function App() {
   const [cardBadgeColumns, setCardBadgeColumns] = useState(loadCardBadgeColumns);
   const [upcomingBadgeDefaults, setUpcomingBadgeDefaults] = useState(loadUpcomingBadgeDefaults);
   const [taskDetailsExpandedOverride, setTaskDetailsExpandedOverride] = useState(null);
-  const [kanbanColumnKeys, setKanbanColumnKeys] = useState(loadKanbanColumnKeys);
   const [deletedRetentionDays, setDeletedRetentionDays] = useState(loadDeletedRetentionDays);
   const [draft, setDraft] = useState(createEmptyTask);
   const [columnFilters, setColumnFilters] = useState(() => initialSessionViewSnapshot.columnFilters);
@@ -2882,10 +2834,6 @@ export default function App() {
   }, [upcomingBadgeDefaults]);
 
   useEffect(() => {
-    saveKanbanColumnKeys(kanbanColumnKeys);
-  }, [kanbanColumnKeys]);
-
-  useEffect(() => {
     saveDeletedRetentionDays(deletedRetentionDays);
   }, [deletedRetentionDays]);
 
@@ -2907,7 +2855,6 @@ export default function App() {
         cardBadgeColumns,
         defaultViewModes,
         defaultStartTabs,
-        kanbanColumnKeys,
         upcomingBadgeDefaults,
         deletedRetentionDays
       ).catch(error => {
@@ -2916,7 +2863,7 @@ export default function App() {
     }, 400);
 
     return () => window.clearTimeout(syncSettingsTimeout);
-  }, [selectedTagTabs, tagCatalog, visibleTabLayout, activeSelectedTagTabs, areTooltipsEnabled, darkModeSettings, cardBadgeColumns, defaultViewModes, defaultStartTabs, kanbanColumnKeys, upcomingBadgeDefaults, deletedRetentionDays, isSettingsLoaded, session, isCurrentUserAllowed]);
+  }, [selectedTagTabs, tagCatalog, visibleTabLayout, activeSelectedTagTabs, areTooltipsEnabled, darkModeSettings, cardBadgeColumns, defaultViewModes, defaultStartTabs, upcomingBadgeDefaults, deletedRetentionDays, isSettingsLoaded, session, isCurrentUserAllowed]);
 
   useEffect(() => {
     if (!isLoaded || !isCurrentUserAllowed) return;
@@ -3090,10 +3037,6 @@ export default function App() {
             }
           }
           hasAppliedRemoteStartTabRef.current = true;
-          if (remoteSettings.kanbanColumnKeys !== null) {
-            setKanbanColumnKeys(current =>
-              migrateKanbanColumnKeys(preferLocalWhenRemoteIsDefault(remoteSettings.kanbanColumnKeys, DEFAULT_KANBAN_COLUMN_KEYS, current)));
-          }
           if (remoteSettings.upcomingBadgeDefaults !== null) {
             setUpcomingBadgeDefaults(current =>
               preferLocalWhenRemoteIsDefault(remoteSettings.upcomingBadgeDefaults, DEFAULT_UPCOMING_BADGE_DEFAULTS, current));
@@ -3297,11 +3240,6 @@ export default function App() {
     editingId ? visibleTasksWithEditingTask.filter(task => task.id === editingId) : visibleTasksWithEditingTask
   ), [editingId, visibleTasksWithEditingTask]);
 
-  const visibleKanbanColumns = useMemo(() => {
-    const activeKeys = new Set(normalizeKanbanColumns(kanbanColumnKeys));
-    return KANBAN_COLUMNS.filter(column => activeKeys.has(column.key));
-  }, [kanbanColumnKeys]);
-
   const normalizedCardBadgeColumns = normalizeCardBadgeColumns(cardBadgeColumns);
   const kanbanBadgeColumnValue = normalizedCardBadgeColumns.kanban;
   const kanbanBadgeColumnCount = getCardBadgeColumnCount(kanbanBadgeColumnValue);
@@ -3310,16 +3248,16 @@ export default function App() {
   const kanbanCardBadgeColumns = useMemo(() => ({ overview: kanbanBadgeColumnValue, edit: kanbanBadgeColumnValue }), [kanbanBadgeColumnValue]);
 
   const kanbanColumnGroups = useMemo(() => {
-    const tasksByColumn = new Map(visibleKanbanColumns.map(column => [column.key, []]));
+    const tasksByColumn = new Map(KANBAN_COLUMNS.map(column => [column.key, []]));
     sortTasks(taskCardsToRender).forEach(task => {
       const columnKey = getKanbanColumnKey(task);
       tasksByColumn.get(columnKey)?.push(task);
     });
-    return visibleKanbanColumns.map(column => ({
+    return KANBAN_COLUMNS.map(column => ({
       ...column,
       tasks: tasksByColumn.get(column.key) || []
     }));
-  }, [taskCardsToRender, visibleKanbanColumns]);
+  }, [taskCardsToRender]);
   const kanbanScrollWidth = (kanbanColumnGroups.length * kanbanColumnWidth) + (Math.max(0, kanbanColumnGroups.length - 1) * 12);
 
   const updateKanbanScrollHint = useCallback(() => {
@@ -4292,15 +4230,6 @@ export default function App() {
     event.target.value = "";
   }
 
-  function toggleKanbanColumn(key) {
-    setKanbanColumnKeys(current => {
-      const normalized = normalizeKanbanColumns(current);
-      const next = normalized.includes(key)
-        ? normalized.filter(columnKey => columnKey !== key)
-        : [...normalized, key];
-      return normalizeKanbanColumns(next);
-    });
-  }
   function updateCardBadgeColumnSetting(section, value) {
     setCardBadgeColumns(current => normalizeCardBadgeColumns({
       ...current,
@@ -4440,17 +4369,6 @@ export default function App() {
           </select>
         </label>
         <span className="menuGroupTitle">Kanban</span>
-        <span className="sectionDefaultsLabel" title="Sets which Kanban board columns are visible. This setting is persistent.">Kanban columns</span>
-        {KANBAN_COLUMNS.map(column => (
-          <label key={column.key} className="menuCheckbox kanbanColumnSetting" title={`${column.title} show or hide in Kanban.`}>
-            <input
-              type="checkbox"
-              checked={kanbanColumnKeys.includes(column.key)}
-              onChange={() => toggleKanbanColumn(column.key)}
-            />
-            <span>{column.title}</span>
-          </label>
-        ))}
         <label className="menuSetting cardBadgeColumnSetting" title="Sets how many badge columns browser Kanban cards show. Phone Kanban always stays at 3 columns.">
           <span>Kanban badge columns browser</span>
           <select
@@ -4979,7 +4897,7 @@ export default function App() {
                   <li>The header view icon switches the current session between List and Kanban. That toggle is temporary; persistent defaults are changed only in Options.</li>
                   <li>Browser and phone can have separate default view modes. Edit sections (Parameter, Description, Subtasks, Comments) always default to expanded on both devices; this is not configurable.</li>
                   <li>Task details can be switched with the header icon for the current view. Options set only the default for fresh sessions: Minimum hides parameter badges and card content until a task's ID is clicked. Maximum shows parameter badges; cards with a description, subtasks, or comments show their labeled content panels directly below the badges, with no click needed.</li>
-                  <li>Kanban groups tasks into the enabled columns Backlog, Doing, and Done; the Done column is the only place in the All tab and tag scopes where done tasks show up outside the dedicated Done tab/menu view.</li>
+                  <li>Kanban groups tasks into columns Backlog, Doing, and Done; the Done column is the only place in the All tab and tag scopes where done tasks show up outside the dedicated Done tab/menu view.</li>
                   <li>On browser, dragging a card to another Kanban column changes its status (Backlog, Doing, or Done) directly, including the usual start-date auto-fill and completion checks; the current view stays put instead of jumping to that status.</li>
                   <li>On phones, Kanban scrolls horizontally by column, shows edge hints when more columns are available, and snaps to the next column while scrolling.</li>
                 </ul>
@@ -5028,7 +4946,7 @@ export default function App() {
               <section>
                 <h3>Options</h3>
                 <ul>
-                  <li>Options contains persistent settings for layout, dark mode, tooltips, tab layout, badge columns, Kanban columns, default views, tags, users, import/export, and logout.</li>
+                  <li>Options contains persistent settings for layout, dark mode, tooltips, tab layout, badge columns, default views, tags, users, import/export, and logout.</li>
                   <li>Only settings changed in Options persist across app restarts. Working selections such as active tab, tag scope, search text, the header List/Kanban toggle, and the header task-detail toggle remain session-only while the app is open. A fresh app session starts from the Options defaults.</li>
                   <li>Tags are managed in Options. Up to 10 tags can exist, selected tags can become top-row tag tabs, and tag order can be changed by drag-and-drop.</li>
                 </ul>

@@ -300,8 +300,7 @@ button {
   color: #3a434d;
 }
 
-.menuGroupTitle,
-.sectionDefaultsLabel {
+.menuGroupTitle {
   grid-column: 1 / -1;
   margin-top: 8px;
   padding: 8px 0 4px;
@@ -3653,7 +3652,6 @@ input:read-only {
 }
 
 [data-theme="dark"] .menuGroupTitle,
-[data-theme="dark"] .sectionDefaultsLabel,
 [data-theme="dark"] .taskEditSection summary,
 [data-theme="dark"] .mobileBadgeSection summary,
 [data-theme="dark"] .mobileTaskHeader h2,
@@ -3698,8 +3696,7 @@ input:read-only {
   color: #ff9b94;
 }
 
-[data-theme="dark"] .menuGroupTitle,
-[data-theme="dark"] .sectionDefaultsLabel {
+[data-theme="dark"] .menuGroupTitle {
   border-color: #394653;
 }
 
