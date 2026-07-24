@@ -267,6 +267,10 @@ button {
   max-width: none;
 }
 
+.mainActionMenu .secondaryButton {
+  font-size: 13px;
+}
+
 .popupHeader {
   display: flex;
   align-items: flex-start;
@@ -291,10 +295,13 @@ button {
 }
 
 .menuSetting span {
-  font-size: 12px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #3a434d;
 }
 
-.menuGroupTitle {
+.menuGroupTitle,
+.sectionDefaultsLabel {
   grid-column: 1 / -1;
   margin-top: 8px;
   padding: 8px 0 4px;
@@ -310,15 +317,6 @@ button {
   margin-top: 0;
   padding-top: 0;
   border-top: 0;
-}
-.sectionDefaultsLabel {
-  grid-column: 1 / -1;
-  margin-top: 2px;
-  padding-top: 8px;
-  border-top: 1px solid #dce1e7;
-  color: #3a434d;
-  font-size: 12px;
-  font-weight: 900;
 }
 
 .sectionDefaultSetting {
@@ -337,7 +335,7 @@ button {
   padding: 0 10px;
   color: #3a434d;
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .menuCheckbox input {
