@@ -659,6 +659,18 @@ main {
   font-weight: 800;
 }
 
+@media (min-width: 901px) {
+  .appTabs button {
+    width: 150px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+}
+
 .tabLayoutRow button {
   cursor: grab;
 }
