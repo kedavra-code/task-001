@@ -48,6 +48,7 @@ const DEFAULT_START_TAB_STORAGE_KEY = "task-001.default-start-tab.v1";
 const DEFAULT_MOBILE_START_TAB_STORAGE_KEY = "task-001.default-mobile-start-tab.v1";
 const KANBAN_COLUMNS_STORAGE_KEY = "task-001.kanban-columns.v1";
 const SESSION_VIEW_STORAGE_KEY = "task-001.session-view.v1";
+const DELETED_RETENTION_DAYS_STORAGE_KEY = "task-001.deleted-retention-days.v1";
 
 const TASK_ID_PREFIX = "T";
 const MAX_TASK_TAGS = 1;
@@ -174,7 +175,8 @@ const STATUS_TABS = [ACTIVE_TAB, "open", "started", NEWEST_TAB];
 const LIST_TABS = [ACTIVE_TAB, "open", "started", NEWEST_TAB, "done"];
 const DONE_TAB = "done";
 const DELETED_TAB = "deleted";
-const DELETED_RETENTION_DAYS = 30;
+const DEFAULT_DELETED_RETENTION_DAYS = 30;
+const DELETED_RETENTION_DAYS_OPTIONS = [7, 14, 30, 60, 90, 180, 365];
 const STATUS_FILTER_BY_TAB = {
   open: "Offen",
   started: "Gestartet"
@@ -402,6 +404,11 @@ function normalizeViewMode(value) {
 
 function normalizeDefaultStartTab(value) {
   return START_TAB_OPTIONS.includes(value) ? value : DEFAULT_START_TAB;
+}
+
+function normalizeDeletedRetentionDays(value) {
+  const parsed = Number(value);
+  return DELETED_RETENTION_DAYS_OPTIONS.includes(parsed) ? parsed : DEFAULT_DELETED_RETENTION_DAYS;
 }
 
 function valuesEqual(a, b) {
@@ -680,15 +687,15 @@ function getTodayDateValue() {
   return `${year}-${month}-${day}`;
 }
 
-function isDeletedExpired(task) {
+function isDeletedExpired(task, retentionDays = DEFAULT_DELETED_RETENTION_DAYS) {
   const deletedTime = getDateDayTime(task.deletedAt);
   if (deletedTime === null) return false;
-  const retentionStart = getTodayDayTime() - DELETED_RETENTION_DAYS * 24 * 60 * 60 * 1000;
+  const retentionStart = getTodayDayTime() - retentionDays * 24 * 60 * 60 * 1000;
   return deletedTime < retentionStart;
 }
 
-function pruneExpiredDeletedTasks(tasks) {
-  return tasks.filter(task => !isDeletedExpired(task));
+function pruneExpiredDeletedTasks(tasks, retentionDays = DEFAULT_DELETED_RETENTION_DAYS) {
+  return tasks.filter(task => !isDeletedExpired(task, retentionDays));
 }
 
 function isOverdue(task) {
@@ -1192,9 +1199,9 @@ function repairMissingCreatedAtFallbacks(tasks) {
   return changed ? nextTasks : tasks;
 }
 
-function prepareTaskList(tasks) {
+function prepareTaskList(tasks, retentionDays = DEFAULT_DELETED_RETENTION_DAYS) {
   return repairMissingCreatedAtFallbacks(
-    pruneExpiredDeletedTasks(assignMissingTaskCodes(tasks))
+    pruneExpiredDeletedTasks(assignMissingTaskCodes(tasks), retentionDays)
   );
 }
 
@@ -1332,15 +1339,16 @@ async function saveRemoteSubtaskRows(tasks, userId) {
 }
 
 function loadLocalTasks() {
+  const retentionDays = loadDeletedRetentionDays();
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
-    if (!saved) return prepareTaskList(SAMPLE_TASKS.map(normalizeTask));
+    if (!saved) return prepareTaskList(SAMPLE_TASKS.map(normalizeTask), retentionDays);
     const parsed = JSON.parse(saved);
     return Array.isArray(parsed)
-      ? prepareTaskList(parsed.map(normalizeTask))
-      : prepareTaskList(SAMPLE_TASKS.map(normalizeTask));
+      ? prepareTaskList(parsed.map(normalizeTask), retentionDays)
+      : prepareTaskList(SAMPLE_TASKS.map(normalizeTask), retentionDays);
   } catch {
-    return prepareTaskList(SAMPLE_TASKS.map(normalizeTask));
+    return prepareTaskList(SAMPLE_TASKS.map(normalizeTask), retentionDays);
   }
 }
 
@@ -1376,7 +1384,7 @@ function mergeRemoteAndLocalTasks(remoteTasks, localTasks) {
   return [...mergedRemoteTasks, ...localOnlyTasks];
 }
 
-async function loadRemoteTasks(userId) {
+async function loadRemoteTasks(userId, retentionDays = DEFAULT_DELETED_RETENTION_DAYS) {
   const [{ data, error }, subtaskRows] = await Promise.all([
     supabase
       .from("tasks")
@@ -1389,12 +1397,12 @@ async function loadRemoteTasks(userId) {
   if (!data || data.length === 0) return [];
 
   const tasks = applyNormalizedSubtaskRows(data.map(rowToTask), subtaskRows);
-  return prepareTaskList(tasks);
+  return prepareTaskList(tasks, retentionDays);
 }
 
-async function saveRemoteTasks(tasks, userId) {
-  const activeTasks = pruneExpiredDeletedTasks(tasks);
-  const expiredIds = tasks.filter(isDeletedExpired).map(task => task.id);
+async function saveRemoteTasks(tasks, userId, retentionDays = DEFAULT_DELETED_RETENTION_DAYS) {
+  const activeTasks = pruneExpiredDeletedTasks(tasks, retentionDays);
+  const expiredIds = tasks.filter(task => isDeletedExpired(task, retentionDays)).map(task => task.id);
   const rows = activeTasks.map(task => taskToRow(task, userId));
   const rowsWithoutSubtasks = rows.map(({ subtasks: _subtasks, ...row }) => row);
   const rowsWithoutCompletedAt = rows.map(({ completed_at: _completedAt, ...row }) => row);
@@ -1427,7 +1435,7 @@ async function saveRemoteTasks(tasks, userId) {
       }
 
       if (hasDeletedAtData) {
-        throw new Error("The Supabase schema must first be extended with deleted_at, otherwise deleted tasks could not be retained for 30 days.");
+        throw new Error("The Supabase schema must first be extended with deleted_at, otherwise deleted tasks could not be retained before permanent removal.");
       }
 
       const { error: noDeletedAtUpsertError } = await supabase.from("tasks").upsert(rowsWithoutDeletedAt);
@@ -1497,7 +1505,8 @@ async function loadRemoteUserSettings(userId) {
         defaultViewModes: null,
         defaultStartTabs: null,
         kanbanColumnKeys: null,
-        upcomingBadgeDefaults: null
+        upcomingBadgeDefaults: null,
+        deletedRetentionDays: null
       };
     }
     throw error;
@@ -1580,6 +1589,14 @@ async function loadRemoteUserSettings(userId) {
   const missingUpcomingBadgeDefaultsColumn = upcomingBadgeDefaultsError && String(upcomingBadgeDefaultsError.message || "").toLowerCase().includes("upcoming_badge_defaults");
   if (upcomingBadgeDefaultsError && !missingUpcomingBadgeDefaultsColumn) throw upcomingBadgeDefaultsError;
 
+  const { data: deletedRetentionDaysData, error: deletedRetentionDaysError } = await supabase
+    .from("user_settings")
+    .select("deleted_retention_days")
+    .eq("user_id", userId)
+    .maybeSingle();
+  const missingDeletedRetentionDaysColumn = deletedRetentionDaysError && String(deletedRetentionDaysError.message || "").toLowerCase().includes("deleted_retention_days");
+  if (deletedRetentionDaysError && !missingDeletedRetentionDaysColumn) throw deletedRetentionDaysError;
+
   return {
     selectedTagTabs: normalizeTags(data?.selected_tag_tabs, 0),
     tagCatalog: normalizeTagCatalog(data?.available_tags),
@@ -1602,7 +1619,8 @@ async function loadRemoteUserSettings(userId) {
       mobile: missingDefaultMobileStartTabColumn ? normalizeDefaultStartTab(defaultStartTabData?.default_start_tab) : normalizeDefaultStartTab(defaultMobileStartTabData?.default_start_tab_mobile)
     },
     kanbanColumnKeys: missingKanbanColumnsColumn ? null : normalizeKanbanColumns(kanbanColumnsData?.kanban_columns),
-    upcomingBadgeDefaults: missingUpcomingBadgeDefaultsColumn ? null : normalizeUpcomingBadgeDefaults(upcomingBadgeDefaultsData?.upcoming_badge_defaults)
+    upcomingBadgeDefaults: missingUpcomingBadgeDefaultsColumn ? null : normalizeUpcomingBadgeDefaults(upcomingBadgeDefaultsData?.upcoming_badge_defaults),
+    deletedRetentionDays: missingDeletedRetentionDaysColumn ? null : normalizeDeletedRetentionDays(deletedRetentionDaysData?.deleted_retention_days)
   };
 }
 
@@ -1637,7 +1655,7 @@ async function updateOptionalUserSettingColumns(userId, values, missingColumnNam
   if (!missingColumnNames.some(columnName => message.includes(columnName))) throw error;
 }
 
-async function saveRemoteUserSettings(userId, selectedTagTabs, tagCatalog, tooltipsEnabled, darkModeSettings, editSectionDefaults, tabLayout, cardBadgeColumns, defaultViewModes, defaultStartTabs, kanbanColumnKeys, upcomingBadgeDefaults) {
+async function saveRemoteUserSettings(userId, selectedTagTabs, tagCatalog, tooltipsEnabled, darkModeSettings, editSectionDefaults, tabLayout, cardBadgeColumns, defaultViewModes, defaultStartTabs, kanbanColumnKeys, upcomingBadgeDefaults, deletedRetentionDays) {
   const normalizedDarkModeSettings = normalizeDarkModeSettings(darkModeSettings);
   const { error } = await supabase
     .from("user_settings")
@@ -1700,6 +1718,10 @@ async function saveRemoteUserSettings(userId, selectedTagTabs, tagCatalog, toolt
   await updateOptionalUserSettingColumns(userId, {
     upcoming_badge_defaults: normalizeUpcomingBadgeDefaults(upcomingBadgeDefaults)
   }, ["upcoming_badge_defaults"]);
+
+  await updateOptionalUserSettingColumns(userId, {
+    deleted_retention_days: normalizeDeletedRetentionDays(deletedRetentionDays)
+  }, ["deleted_retention_days"]);
 }
 
 function isMissingAllowedUsersTableError(error) {
@@ -1825,6 +1847,22 @@ function saveDefaultViewModes(value) {
   try {
     localStorage.setItem(DEFAULT_VIEW_MODE_STORAGE_KEY, browser);
     localStorage.setItem(DEFAULT_MOBILE_VIEW_MODE_STORAGE_KEY, mobile);
+  } catch {
+    // Local UI preference only.
+  }
+}
+
+function loadDeletedRetentionDays() {
+  try {
+    return normalizeDeletedRetentionDays(localStorage.getItem(DELETED_RETENTION_DAYS_STORAGE_KEY));
+  } catch {
+    return DEFAULT_DELETED_RETENTION_DAYS;
+  }
+}
+
+function saveDeletedRetentionDays(value) {
+  try {
+    localStorage.setItem(DELETED_RETENTION_DAYS_STORAGE_KEY, String(normalizeDeletedRetentionDays(value)));
   } catch {
     // Local UI preference only.
   }
@@ -1971,8 +2009,8 @@ function saveTagCatalog(tags) {
   }
 }
 
-function saveLocalTasks(tasks) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(pruneExpiredDeletedTasks(tasks)));
+function saveLocalTasks(tasks, retentionDays = DEFAULT_DELETED_RETENTION_DAYS) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(pruneExpiredDeletedTasks(tasks, retentionDays)));
 }
 
 function saveTooltipsEnabled(isEnabled) {
@@ -2755,7 +2793,7 @@ function parseCsv(text) {
   return rows;
 }
 
-function csvToTasks(text) {
+function csvToTasks(text, retentionDays = DEFAULT_DELETED_RETENTION_DAYS) {
   const rows = parseCsv(text);
   if (rows.length < 2) return [];
 
@@ -2771,7 +2809,8 @@ function csvToTasks(text) {
     .filter(task => normalizeText(task.task));
 
   return prepareTaskList(
-    importedTasks.map(task => normalizeTask({ ...task, id: crypto.randomUUID() }))
+    importedTasks.map(task => normalizeTask({ ...task, id: crypto.randomUUID() })),
+    retentionDays
   );
 }
 
@@ -2797,6 +2836,7 @@ export default function App() {
   const [upcomingBadgeDefaults, setUpcomingBadgeDefaults] = useState(loadUpcomingBadgeDefaults);
   const [taskDetailsExpandedOverride, setTaskDetailsExpandedOverride] = useState(null);
   const [kanbanColumnKeys, setKanbanColumnKeys] = useState(loadKanbanColumnKeys);
+  const [deletedRetentionDays, setDeletedRetentionDays] = useState(loadDeletedRetentionDays);
   const [draft, setDraft] = useState(createEmptyTask);
   const [columnFilters, setColumnFilters] = useState(() => initialSessionViewSnapshot.columnFilters);
   const [activeAppTab, setActiveAppTab] = useState(initialAppTab);
@@ -3010,6 +3050,10 @@ export default function App() {
   }, [kanbanColumnKeys]);
 
   useEffect(() => {
+    saveDeletedRetentionDays(deletedRetentionDays);
+  }, [deletedRetentionDays]);
+
+  useEffect(() => {
     saveSelectedTagTabs(selectedTagTabs);
     saveTagCatalog(tagCatalog);
     saveTabLayout(visibleTabLayout, activeSelectedTagTabs);
@@ -3029,14 +3073,15 @@ export default function App() {
         defaultViewModes,
         defaultStartTabs,
         kanbanColumnKeys,
-        upcomingBadgeDefaults
+        upcomingBadgeDefaults,
+        deletedRetentionDays
       ).catch(error => {
         setStorageError(`Supabase could not save settings: ${error.message}`);
       });
     }, 400);
 
     return () => window.clearTimeout(syncSettingsTimeout);
-  }, [selectedTagTabs, tagCatalog, visibleTabLayout, activeSelectedTagTabs, areTooltipsEnabled, darkModeSettings, editSectionDefaults, cardBadgeColumns, defaultViewModes, defaultStartTabs, kanbanColumnKeys, upcomingBadgeDefaults, isSettingsLoaded, session, isCurrentUserAllowed]);
+  }, [selectedTagTabs, tagCatalog, visibleTabLayout, activeSelectedTagTabs, areTooltipsEnabled, darkModeSettings, editSectionDefaults, cardBadgeColumns, defaultViewModes, defaultStartTabs, kanbanColumnKeys, upcomingBadgeDefaults, deletedRetentionDays, isSettingsLoaded, session, isCurrentUserAllowed]);
 
   useEffect(() => {
     if (!isLoaded || !isCurrentUserAllowed) return;
@@ -3222,6 +3267,10 @@ export default function App() {
             setUpcomingBadgeDefaults(current =>
               preferLocalWhenRemoteIsDefault(remoteSettings.upcomingBadgeDefaults, DEFAULT_UPCOMING_BADGE_DEFAULTS, current));
           }
+          if (remoteSettings.deletedRetentionDays !== null) {
+            setDeletedRetentionDays(current =>
+              preferLocalWhenRemoteIsDefault(remoteSettings.deletedRetentionDays, DEFAULT_DELETED_RETENTION_DAYS, current));
+          }
 
           if (remoteSettings.tabLayout !== null) {
             setTabLayout(current =>
@@ -3244,7 +3293,7 @@ export default function App() {
   useEffect(() => {
     if (!isLoaded) return;
 
-    saveLocalTasks(tasks);
+    saveLocalTasks(tasks, deletedRetentionDays);
 
     if (!isSupabaseConfigured) {
       return;
@@ -3252,10 +3301,10 @@ export default function App() {
 
     if (!session?.user?.id || !isCurrentUserAllowed) return;
 
-    saveRemoteTasks(tasks, session.user.id).catch(error => {
+    saveRemoteTasks(tasks, session.user.id, deletedRetentionDays).catch(error => {
       setStorageError(`Supabase could not save data: ${error.message}`);
     });
-  }, [tasks, isLoaded, session, isCurrentUserAllowed]);
+  }, [tasks, isLoaded, session, isCurrentUserAllowed, deletedRetentionDays]);
 
   useEffect(() => {
     if (!isLoaded || !isSettingsLoaded || tagCatalog.length > 0) return;
@@ -3274,7 +3323,7 @@ export default function App() {
 
     let isCancelled = false;
 
-    loadRemoteTasks(session.user.id)
+    loadRemoteTasks(session.user.id, deletedRetentionDays)
       .then(remoteTasks => {
         if (isCancelled) return;
         setTasks(currentTasks => mergeRemoteAndLocalTasks(remoteTasks, currentTasks));
@@ -3293,11 +3342,11 @@ export default function App() {
   }, [session, isCurrentUserAllowed]);
 
   useEffect(() => {
-    const refreshedTasks = pruneExpiredDeletedTasks(tasks);
+    const refreshedTasks = pruneExpiredDeletedTasks(tasks, deletedRetentionDays);
     if (refreshedTasks.length !== tasks.length || refreshedTasks.some((task, index) => task !== tasks[index])) {
       setTasks(refreshedTasks);
     }
-  }, [tasks]);
+  }, [tasks, deletedRetentionDays]);
 
   useEffect(() => {
     if (!isActionMenuOpen && !isMobileFilterOpen && !isTagManagerOpen && !isUserManagerOpen) return undefined;
@@ -4512,11 +4561,11 @@ export default function App() {
         const content = String(reader.result);
         const importFormat = importFormatRef.current;
         const importedTasks = importFormat === "csv" || file.name.toLowerCase().endsWith(".csv")
-          ? csvToTasks(content)
+          ? csvToTasks(content, deletedRetentionDays)
           : readTasksFromImportPayload(JSON.parse(content));
 
         if (Array.isArray(importedTasks)) {
-          const nextTasks = prepareTaskList(importedTasks.map(normalizeTask).filter(task => task.task));
+          const nextTasks = prepareTaskList(importedTasks.map(normalizeTask).filter(task => task.task), deletedRetentionDays);
           updateTasksWithUndo(
             nextTasks
           );
@@ -4828,6 +4877,18 @@ export default function App() {
         <span>Redo</span>
       </button>
       <span className="menuGroupTitle menuDataTitle">Data</span>
+      <label className="menuSetting deletedRetentionSetting" title="Sets how many days a deleted task is kept and can still be restored before it is permanently removed. This setting is persistent.">
+        <span>Deleted retention</span>
+        <select
+          value={deletedRetentionDays}
+          onChange={event => setDeletedRetentionDays(normalizeDeletedRetentionDays(event.target.value))}
+          title="Choose how long deleted tasks are retained before permanent removal"
+        >
+          {DELETED_RETENTION_DAYS_OPTIONS.map(option => (
+            <option key={option} value={option}>{option} days</option>
+          ))}
+        </select>
+      </label>
       <ActionSelect
         label="Export"
         className="menuExportSelect"

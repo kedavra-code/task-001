@@ -69,6 +69,7 @@ create table if not exists public.user_settings (
   default_start_tab_mobile text not null default 'active',
   kanban_columns jsonb not null default '["open","started","done"]'::jsonb,
   upcoming_badge_defaults jsonb not null default '{"version":2,"browser":false,"mobile":false,"dependenciesBrowser":false,"dependenciesMobile":false}'::jsonb,
+  deleted_retention_days integer not null default 30,
   updated_at timestamptz not null default now()
 );
 
@@ -144,6 +145,9 @@ add column if not exists kanban_columns jsonb not null default '["open","started
 
 alter table public.user_settings
 add column if not exists upcoming_badge_defaults jsonb not null default '{"version":2,"browser":false,"mobile":false,"dependenciesBrowser":false,"dependenciesMobile":false}'::jsonb;
+
+alter table public.user_settings
+add column if not exists deleted_retention_days integer not null default 30;
 
 
 alter table public.user_settings enable row level security;
