@@ -10,7 +10,6 @@ import {
   Plus,
   Redo2,
   Search,
-  Share2,
   Undo2,
   Trash2,
   X
@@ -2206,32 +2205,6 @@ function getTaskCommentText(task) {
     .join(" | ");
 }
 
-function getTaskShareText(task) {
-  const subtasks = normalizeSubtasks(task.subtasks);
-  const comments = normalizeComments(task.comments);
-  return [
-    `${task.taskCode}: ${task.task}`,
-    normalizeText(task.beschreibung) ? `Description: ${task.beschreibung}` : "",
-    comments.length > 0 ? `Comments: ${comments.map(comment => comment.text).join("; ")}` : "",
-    subtasks.length > 0 ? `Subtasks: ${subtasks.map(formatSubtaskForDisplay).join("; ")}` : "",
-    normalizeTags(task.tags).length > 0 ? `Tags: ${normalizeTags(task.tags).map(tag => `#${tag}`).join(", ")}` : "",
-    `Prio: ${getDisplayValue(getEffectivePrio(task.prio))}`,
-    `Status: ${getDisplayValue(getDisplayStatus(task))}`,
-    task.faellig ? `Due: ${formatDate(task.faellig)}` : "",
-    task.completedAt ? `Done on: ${formatDate(task.completedAt)}` : ""
-  ].filter(Boolean).join("\n");
-}
-
-function getTaskShareUrl(task) {
-  const url = new URL(`${window.location.origin}${window.location.pathname}`);
-  url.searchParams.set("task-id", task.taskCode || task.id);
-  return url.toString();
-}
-
-function getTaskSharePayloadText(task) {
-  return `${getTaskShareText(task)}\n${getTaskShareUrl(task)}`;
-}
-
 function resizeTextareaToContent(textarea, maxRows = 4) {
   if (!textarea) return;
   const style = window.getComputedStyle(textarea);
@@ -3699,7 +3672,6 @@ export default function App() {
       onDelete: deleteTask,
       onRestore: restoreTask,
       onToggleDone: toggleDone,
-      onShareTask: shareTask,
       onQuickChange: updateTaskField,
       onChange: updateEditDraft,
       isDescriptionOpen: openDescriptionTaskId === task.id,
@@ -4344,47 +4316,6 @@ export default function App() {
 
     if (!preserveView && !isCompletingTask && (field === "googleStatus" || field === "tags") && !isTaskInActiveViewScope(nextTask)) {
       showTaskView(nextTask);
-    }
-  }
-
-  async function shareTask(task) {
-    const shareText = getTaskSharePayloadText(task);
-    const payload = {
-      title: `${task.taskCode}: ${task.task}`,
-      text: shareText
-    };
-
-    try {
-      let copiedToClipboard = false;
-      try {
-        await navigator.clipboard?.writeText(shareText);
-        copiedToClipboard = true;
-      } catch {
-        copiedToClipboard = false;
-      }
-
-      if (navigator.share) {
-        await navigator.share(payload);
-        setActionMessage(
-          copiedToClipboard
-            ? `Task ${task.taskCode} was shared and copied to the clipboard.`
-            : `Task ${task.taskCode} was shared.`
-        );
-        return;
-      }
-
-      if (!copiedToClipboard) await navigator.clipboard.writeText(shareText);
-      setActionMessage(`Task ${task.taskCode} was copied to the clipboard.`);
-    } catch (error) {
-      if (error?.name === "AbortError") return;
-
-      try {
-        await navigator.clipboard.writeText(shareText);
-        setActionMessage(`Task ${task.taskCode} was copied to the clipboard.`);
-      } catch {
-        setActionMessage("Sharing is not available in this browser.");
-        window.alert("Sharing is not available in this browser.");
-      }
     }
   }
 
@@ -5229,7 +5160,7 @@ export default function App() {
                   <li>Cards use fixed badge cells so values stay aligned across tasks. Phones always use three badge columns; browser list, browser edit, and browser Kanban badge columns can be configured separately in Options.</li>
                   <li>Empty values show a dash. Start and Due keep their labels visible and may wrap to two lines on phones after the colon so the date stays visible.</li>
                   <li>Reached start dates, due-today dates, and overdue due dates are shown by coloring the date value red instead of adding separate badges.</li>
-                  <li>Adjacent icons use the same size. Share, delete, and completion are the card action icons. The Share icon includes a direct task URL such as ?task-id=T-123, which opens the task in Maximum detail view after login. In Minimum mode, clicking a task ID reveals that one card's description/subtasks/comments panels below the badges; clicking it again, or clicking another task ID, closes it, unlike true Maximum mode where those panels show directly for every card with no click needed. The save icon is a disk, completion uses a check, delete uses trash, close uses x, and a due-reminder warning uses a red exclamation mark near the task ID.</li>
+                  <li>Adjacent icons use the same size. Delete and completion are the card action icons. A direct task URL such as ?task-id=T-123 opens that task in Maximum detail view after login. In Minimum mode, clicking a task ID reveals that one card's description/subtasks/comments panels below the badges; clicking it again, or clicking another task ID, closes it, unlike true Maximum mode where those panels show directly for every card with no click needed. The save icon is a disk, completion uses a check, delete uses trash, close uses x, and a due-reminder warning uses a red exclamation mark near the task ID.</li>
                 </ul>
               </section>
 
@@ -6408,7 +6339,6 @@ function MobileTaskCard({
   onDelete,
   onRestore,
   onToggleDone,
-  onShareTask,
   onChange,
   isDescriptionOpen = false,
   onToggleDescription = () => {},
@@ -6799,15 +6729,6 @@ function MobileTaskCard({
             title="Edit task"
           >
             <Pencil size={17} />
-          </button>
-          <button
-            type="button"
-            className="iconButton"
-            onClick={() => onShareTask(task)}
-            aria-label="Share task"
-            title="Share task"
-          >
-            <Share2 size={16} />
           </button>
           {!deleted && (
             <button
