@@ -205,21 +205,6 @@ button {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-.mainActionMenu .menuTaskViewsTitle {
-  order: 3;
-}
-
-.mainActionMenu .menuReviewButton,
-.mainActionMenu .menuDoneButton,
-.mainActionMenu .menuDeletedButton,
-.mainActionMenu .menuReviewSummaryButton {
-  order: 4;
-}
-
-.mainActionMenu .menuReviewButton,
-.mainActionMenu .menuDoneButton,
-.mainActionMenu .menuDeletedButton,
-.mainActionMenu .menuReviewSummaryButton,
 .mainActionMenu .menuDocButton,
 .mainActionMenu .menuUserButton,
 .mainActionMenu .menuUndoButton,
@@ -228,7 +213,6 @@ button {
   grid-column: 1;
 }
 
-.mainActionMenu .menuDeletedButton,
 .mainActionMenu .menuTagsButton,
 .mainActionMenu .menuRedoButton,
 .mainActionMenu .menuRestoreSelect {
@@ -775,71 +759,6 @@ main {
 .summaryTile.active {
   border-color: #1f6feb;
   box-shadow: 0 0 0 2px rgba(31, 111, 235, 0.14);
-}
-.reviewSummaryContent {
-  display: grid;
-  gap: 16px;
-}
-
-.reviewSummaryGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-  gap: 10px;
-}
-
-.reviewSummaryGrid span {
-  display: grid;
-  gap: 4px;
-  min-height: 74px;
-  border: 1px solid #dce1e7;
-  border-radius: 8px;
-  background: #f6f8fb;
-  padding: 10px 12px;
-}
-
-.reviewSummaryGrid strong {
-  font-size: 24px;
-  line-height: 1;
-}
-
-.reviewSummaryGrid small,
-.reviewTaskList small {
-  color: #637083;
-}
-
-.reviewTaskList {
-  display: grid;
-  gap: 10px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.reviewTaskList li {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 4px 8px;
-  align-items: baseline;
-  border-top: 1px solid #e5eaf0;
-  padding-top: 8px;
-}
-
-.reviewTaskList small {
-  grid-column: 2;
-}
-
-[data-theme="dark"] .reviewSummaryGrid span {
-  border-color: #3a4654;
-  background: #111820;
-}
-
-[data-theme="dark"] .reviewSummaryGrid small,
-[data-theme="dark"] .reviewTaskList small {
-  color: #a8b3c2;
-}
-
-[data-theme="dark"] .reviewTaskList li {
-  border-top-color: #3a4654;
 }
 .taskForm {
   border: 1px solid #dce1e7;
@@ -3516,7 +3435,6 @@ input:read-only {
     grid-template-columns: 1fr;
   }
 
-  .mainActionMenu .menuDeletedButton,
   .mainActionMenu .menuTagsButton,
   .mainActionMenu .menuDocButton,
   .mainActionMenu .menuUndoButton,
@@ -3525,8 +3443,6 @@ input:read-only {
     grid-column: 1;
   }
 
-  .mainActionMenu .menuReviewButton,
-  .mainActionMenu .menuDoneButton,
   .mainActionMenu .menuUserButton,
   .mainActionMenu .menuRedoButton,
   .mainActionMenu .menuRestoreSelect {

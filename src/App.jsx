@@ -5,7 +5,6 @@ import {
   ArrowUpDown,
   Check,
   Columns3,
-  FileText,
   List,
   Maximize2,
   Minimize2,
@@ -32,13 +31,6 @@ import {
   normalizeSubtasks,
   taskSubtasksToRows
 } from "./subtasks";
-import {
-  REVIEW_STALE_DAYS,
-  getTaskReviewReasons,
-  getTaskReviewSummary,
-  shouldShowInReview
-} from "./reviewTools";
-
 const STORAGE_KEY = "task-sheet.tasks.v1";
 const SELECTED_TAG_TABS_STORAGE_KEY = "task-001.selected-tag-tabs.v1";
 const TAG_CATALOG_STORAGE_KEY = "task-001.tag-catalog.v1";
@@ -168,7 +160,6 @@ function getDisplayListValue(value) {
 function getViewLabel(tab) {
   const labels = {
     capture: "New task",
-    review: "Review",
     newest: "Newest",
     open: "Backlog",
     started: "Doing",
@@ -182,14 +173,8 @@ const ACTIVE_TAB = "active";
 const DEFAULT_START_TAB = ACTIVE_TAB;
 const START_TAB_OPTIONS = [ACTIVE_TAB];
 const NEWEST_TAB = "newest";
-const REVIEW_TAB = "review";
-const REVIEW_INFO_ITEMS = [
-  "old backlog tasks without movement",
-  `doing tasks without comments for ${REVIEW_STALE_DAYS}+ days`,
-  "tasks without start or due date"
-];
-const STATUS_TABS = [ACTIVE_TAB, REVIEW_TAB, "open", "started", NEWEST_TAB];
-const LIST_TABS = [ACTIVE_TAB, REVIEW_TAB, "open", "started", NEWEST_TAB, "done"];
+const STATUS_TABS = [ACTIVE_TAB, "open", "started", NEWEST_TAB];
+const LIST_TABS = [ACTIVE_TAB, "open", "started", NEWEST_TAB, "done"];
 const DONE_TAB = "done";
 const DELETED_TAB = "deleted";
 const DELETED_RETENTION_DAYS = 30;
@@ -3038,7 +3023,6 @@ export default function App() {
   const [isActionMenuOpen, setIsActionMenuOpen] = useState(false);
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
   const [isUserDocOpen, setIsUserDocOpen] = useState(false);
-  const [isReviewSummaryOpen, setIsReviewSummaryOpen] = useState(false);
   const [isTagManagerOpen, setIsTagManagerOpen] = useState(false);
   const [isUserManagerOpen, setIsUserManagerOpen] = useState(false);
   const [selectedTagTabs, setSelectedTagTabs] = useState(loadSelectedTagTabs);
@@ -3111,7 +3095,6 @@ export default function App() {
       setIsTagManagerOpen(false);
       setIsUserManagerOpen(false);
       setIsUserDocOpen(false);
-      setIsReviewSummaryOpen(false);
     });
   };
 
@@ -3584,9 +3567,7 @@ export default function App() {
       const cache = taskFilterCacheById.get(task.id) || getTaskFilterCache(task, tasksById, childIdsByParent);
       const matchesPrio =
         columnFilters.prio === "Alle" || getEffectivePrio(task.prio) === columnFilters.prio;
-      const matchesViewStatus = activeAppTab === REVIEW_TAB
-        ? shouldShowInReview(task)
-        : activeAppTab === DONE_TAB
+      const matchesViewStatus = activeAppTab === DONE_TAB
         ? isDone(task)
         : activeAppTab === DELETED_TAB
           ? true
@@ -3596,7 +3577,7 @@ export default function App() {
               ? (isKanbanView ? true : !isDone(task))
               : matchesGoogleStatusFilter(task, columnFilters.googleStatus);
       const matchesDueStatus = matchesDueStatusFilter(task, columnFilters.dueStatus);
-      const matchesTagScope = activeAppTab === REVIEW_TAB || activeTagScope === "all" || hasTag(task, activeTagScope);
+      const matchesTagScope = activeTagScope === "all" || hasTag(task, activeTagScope);
       const matchesDeletedScope = activeAppTab === DELETED_TAB ? isDeleted(task) : !isDeleted(task);
       const tagText = cache.tagText;
       const matchesTagFilter = columnFilters.tagFilter === "-"
@@ -3827,8 +3808,7 @@ export default function App() {
       deleted: 0,
       startsToday: 0,
       dueToday: 0,
-      overdue: 0,
-      review: 0
+      overdue: 0
     };
 
     tasks.forEach(task => {
@@ -3839,7 +3819,6 @@ export default function App() {
         return;
       }
 
-      if (shouldShowInReview(task)) nextCounts.review += 1;
       if (task.googleStatus === "Offen") nextCounts.open += 1;
       if (task.googleStatus === "Gestartet") nextCounts.started += 1;
       if (!done) nextCounts.newest += 1;
@@ -3868,14 +3847,10 @@ export default function App() {
       open: activeScopedTasks.filter(task => task.googleStatus === "Offen").length,
       started: activeScopedTasks.filter(task => task.googleStatus === "Gestartet").length,
       newest: activeScopedTasks.filter(task => !isDone(task)).length,
-      review: activeScopedTasks.filter(task => shouldShowInReview(task)).length,
       done: activeScopedTasks.filter(isDone).length,
       deleted: scopedTasks.filter(isDeleted).length
     };
   }, [tasks, activeTagScope]);
-
-  const reviewSummary = useMemo(() => getTaskReviewSummary(tasks), [tasks]);
-  const reviewTasks = useMemo(() => tasks.filter(task => shouldShowInReview(task)), [tasks]);
 
   const dependencyOptions = useMemo(() => getTaskOptions(tasks), [tasks]);
   const taskCodeOptions = useMemo(() => sortTasks(tasks).map(task => task.taskCode).filter(Boolean), [tasks]);
@@ -4458,10 +4433,9 @@ export default function App() {
   function showListTab(tab) {
     requestEditExit(() => {
       setActionMessage("");
-      const isActiveListTab = tab !== REVIEW_TAB && activeAppTab === tab && columnFilters.dueStatus === "Alle";
+      const isActiveListTab = activeAppTab === tab && columnFilters.dueStatus === "Alle";
       const nextTab = isActiveListTab ? ACTIVE_TAB : tab;
-      const nextDueStatus = isActiveListTab || tab === NEWEST_TAB || tab === REVIEW_TAB ? "Alle" : columnFilters.dueStatus;
-      if (tab === REVIEW_TAB) setActiveTagScope("all");
+      const nextDueStatus = isActiveListTab || tab === NEWEST_TAB ? "Alle" : columnFilters.dueStatus;
       if (nextTab === DONE_TAB || nextTab === DELETED_TAB) {
         setIsKanbanView(false);
       } else if (nextTab === ACTIVE_TAB && (activeAppTab === DONE_TAB || activeAppTab === DELETED_TAB)) {
@@ -4475,44 +4449,13 @@ export default function App() {
     });
   }
 
-  function openReviewSummary() {
-    setIsReviewSummaryOpen(true);
-    setIsActionMenuOpen(false);
-  }
-
-  function showDeletedTab() {
-    requestEditExit(() => {
-      setActionMessage("");
-      setIsKanbanView(false);
-      setActiveAppTab(DELETED_TAB);
-      clearEdit();
-      setColumnFilters(getDefaultColumnFilters(DELETED_TAB));
-      setIsActionMenuOpen(false);
-      setIsMobileFilterOpen(false);
-    });
-  }
-
-  function showDoneTab() {
-    requestEditExit(() => {
-      setActionMessage("");
-      setIsKanbanView(false);
-      setActiveAppTab(DONE_TAB);
-      clearEdit();
-      setColumnFilters(getDefaultColumnFilters(DONE_TAB));
-      setIsActionMenuOpen(false);
-      setIsMobileFilterOpen(false);
-    });
-  }
-
   function showTagScope(tag) {
     requestEditExit(() => {
       setActionMessage("");
       setActiveTagScope(tag);
-      const nextTab = activeAppTab === REVIEW_TAB
-        ? ACTIVE_TAB
-        : [...LIST_TABS, DELETED_TAB].includes(activeAppTab)
-          ? activeAppTab
-          : ACTIVE_TAB;
+      const nextTab = [...LIST_TABS, DELETED_TAB].includes(activeAppTab)
+        ? activeAppTab
+        : ACTIVE_TAB;
       setActiveAppTab(nextTab);
       clearEdit();
       setColumnFilters(getDefaultColumnFilters(nextTab));
@@ -5138,26 +5081,6 @@ export default function App() {
           </label>
         ))}
       </div>
-      <span className="menuGroupTitle menuTaskViewsTitle">Task views</span>
-      <button type="button" className="secondaryButton menuIconButton menuReviewButton" onClick={() => showListTab(REVIEW_TAB)} title="Review: show tasks that should be checked briefly">
-        <Search size={16} />
-        <span>Review</span>
-        <span className="menuCount">{scopedStatusCounts.review}</span>
-      </button>
-      <button type="button" className="secondaryButton menuIconButton menuDoneButton" onClick={showDoneTab} title="Show done tasks in the current scope">
-        <Check size={16} />
-        <span>Done</span>
-        <span className="menuCount">{scopedStatusCounts.done}</span>
-      </button>
-      <button type="button" className="secondaryButton menuIconButton menuDeletedButton" onClick={showDeletedTab} title="Show deleted tasks in the current scope and restore them if needed">
-        <Trash2 size={16} />
-        <span>Deleted</span>
-        <span className="menuCount">{scopedStatusCounts.deleted}</span>
-      </button>
-      <button type="button" className="secondaryButton menuIconButton menuReviewSummaryButton" onClick={openReviewSummary} title="Show daily/weekly close-out with done, started, open, and overdue tasks">
-        <FileText size={16} />
-        <span>Close-out</span>
-      </button>
       <span className="menuGroupTitle menuManagementTitle">Management</span>
       <button type="button" className="secondaryButton menuDocButton" onClick={openUserDoc} title="Open current user documentation in the app">
         Docs
@@ -5584,17 +5507,6 @@ export default function App() {
           </div>
         )}
 
-        {activeAppTab === REVIEW_TAB && !isSingleTaskEditMode && (
-          <div className="activeFilterBadges reviewInfoBadges" aria-label="Review includes">
-            <span className="activeFilterBadge reviewInfoBadge">Review includes:</span>
-            {REVIEW_INFO_ITEMS.map(item => (
-              <span key={item} className="activeFilterBadge reviewInfoBadge" title={item}>
-                {item}
-              </span>
-            ))}
-          </div>
-        )}
-
         {actionMessage && <p className="successMessage appMessage">{actionMessage}</p>}
 
         {(isListTab(activeAppTab) || activeAppTab === "capture") && (
@@ -5842,40 +5754,6 @@ export default function App() {
           </section>
         </div>
       )}
-      {isReviewSummaryOpen && (
-        <div className="modalBackdrop" role="presentation" onMouseDown={() => setIsReviewSummaryOpen(false)}>
-          <section className="userDocModal reviewSummaryModal" role="dialog" aria-modal="true" aria-labelledby="review-summary-title" onMouseDown={event => event.stopPropagation()}>
-            <header>
-              <h2 id="review-summary-title">Daily/weekly close-out</h2>
-              <button type="button" className="iconButton" onClick={() => setIsReviewSummaryOpen(false)} title="Close close-out">
-                <X size={18} />
-              </button>
-            </header>
-            <div className="reviewSummaryContent">
-              <div className="reviewSummaryGrid" aria-label="Close-out numbers">
-                <span><strong>{reviewSummary.doneToday}</strong><small>done today</small></span>
-                <span><strong>{reviewSummary.doneWeek}</strong><small>done in 7 days</small></span>
-                <span><strong>{reviewSummary.started}</strong><small>started</small></span>
-                <span><strong>{reviewSummary.open}</strong><small>still open</small></span>
-                <span><strong>{reviewSummary.overdue}</strong><small>overdue</small></span>
-              </div>
-              <h3>Quick review today</h3>
-              <ul className="reviewTaskList">
-                {reviewTasks.length === 0 && <li>No review tasks.</li>}
-                {reviewTasks.slice(0, 12).map(task => (
-                  <li key={task.id}>
-                    <button type="button" className="inlineLinkButton" onClick={() => { setIsReviewSummaryOpen(false); startEdit(task); }}>
-                      {task.taskCode || "Task"}
-                    </button>
-                    <span>{task.task}</span>
-                    <small>{getTaskReviewReasons(task).join(" · ")}</small>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </section>
-        </div>
-      )}
       {isUserDocOpen && (
         <div className="modalBackdrop" role="presentation" onMouseDown={() => setIsUserDocOpen(false)}>
           <section
@@ -5909,7 +5787,7 @@ export default function App() {
                 <ul>
                   <li>The top title resets the session to All without status, due, tag, or column filters. Current view, scope, mode, and search are shown in the info line below the tabs; the filter icon shows the active filter/sort count and lists them on hover. Done and Deleted count as view filters and can be left with Reset filters.</li>
                   <li>All is the primary tab. Tasks that need immediate attention, such as clarification, reached start dates, due-today work, overdue work, and matching subtask reminders, are marked directly on the task with a red exclamation mark.</li>
-                  <li>All, Done, and Deleted share the row above the tag row. Backlog and Doing can still be reached from the header filter's Status dropdown; Review and Close-out are available from Options.</li>
+                  <li>All, Done, and Deleted share the row above the tag row. Backlog and Doing can still be reached from the header filter's Status dropdown.</li>
                   <li>The search field is session-only and searches across all active tasks regardless of the currently selected tab or filters. In Done, it searches done tasks only; in Deleted, it searches deleted tasks only.</li>
                 </ul>
               </section>

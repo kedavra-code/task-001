@@ -15,11 +15,6 @@ import {
 } from "../src/subtasks.js";
 
 import { matchesFreeTextSearch, matchesGlobalTaskSearch } from "../src/taskSearch.js";
-import {
-  getTaskReviewReasons,
-  getTaskReviewSummary,
-  shouldShowInReview
-} from "../src/reviewTools.js";
 
 const tests = [];
 const todayTime = new Date("2026-06-03T00:00:00").getTime();
@@ -262,32 +257,6 @@ test("subtasks convert to task_subtasks rows in order", () => {
   ]);
 });
 
-test("started tasks without recent comments enter review", () => {
-  const started = task({
-    googleStatus: "Gestartet",
-    createdAt: "2026-05-20T08:00:00.000Z",
-    comments: [{ text: "old", createdAt: "2026-05-22T08:00:00.000Z" }],
-    startdatum: "2026-05-20",
-    faellig: "2026-06-20"
-  });
-
-  assert.match(getTaskReviewReasons(started, { today: "2026-06-03" }).join(" "), /Doing without a comment/);
-});
-
-test("review summary counts daily and weekly closure metrics", () => {
-  const summary = getTaskReviewSummary([
-    task({ googleStatus: "Erledigt", completedAt: "2026-06-03" }),
-    task({ googleStatus: "Erledigt", completedAt: "2026-06-01" }),
-    task({ googleStatus: "Gestartet" }),
-    task({ googleStatus: "Offen", faellig: "2026-06-02" })
-  ], { today: "2026-06-03" });
-
-  assert.equal(summary.doneToday, 1);
-  assert.equal(summary.doneWeek, 2);
-  assert.equal(summary.started, 1);
-  assert.equal(summary.open, 1);
-  assert.equal(summary.overdue, 1);
-});
 test("overview free-text search matches all words across task fields", () => {
   const values = ["T-042", "Budget abstimmen", "Kommentar von Sascha", "#ETH"];
   assert.equal(matchesFreeTextSearch(values, "budget sascha"), true);
