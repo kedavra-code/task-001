@@ -98,15 +98,6 @@ export function getDependencyCycleMessage(tasks) {
   return `Abhängigkeit würde einen Zyklus erzeugen: ${labels.join(" -> ")}.`;
 }
 
-export function getEffectiveWann(wann) {
-  return wann === CRITERIA_PLACEHOLDER ? "klären" : wann;
-}
-
-export function isClarificationPending(task) {
-  if (isDeleted(task)) return false;
-  return !isDone(task) && getEffectiveWann(task?.wann) === "klären";
-}
-
 export function isOverdue(task, todayTime = getTodayDayTime()) {
   if (isDeleted(task) || isDone(task)) return false;
   const dueTime = getDateDayTime(task?.faellig);
@@ -138,7 +129,6 @@ export function getTodayDayTime() {
 export function getDueReminderStatus(task, todayTime = getTodayDayTime()) {
   if (isDone(task)) return [];
   return [
-    !isStarted(task) && isClarificationPending(task) ? "clarify" : "",
     isStartPending(task, todayTime) ? "Start reached" : "",
     isOverdue(task, todayTime) ? "overdue" : "",
     isDueToday(task, todayTime) ? "due today" : ""

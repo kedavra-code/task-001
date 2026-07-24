@@ -95,7 +95,7 @@ create table if not exists public.user_settings (
   default_view_mode_mobile text not null default 'kanban',
   default_start_tab text not null default 'active',
   default_start_tab_mobile text not null default 'active',
-  kanban_columns jsonb not null default '["clarify","open","started"]'::jsonb,
+  kanban_columns jsonb not null default '["open","started"]'::jsonb,
   upcoming_badge_defaults jsonb not null default '{"version":2,"browser":false,"mobile":false,"dependenciesBrowser":false,"dependenciesMobile":false}'::jsonb,
   updated_at timestamptz not null default now()
 );
@@ -179,7 +179,7 @@ alter table public.user_settings
 add column if not exists default_start_tab_mobile text not null default 'active';
 
 alter table public.user_settings
-add column if not exists kanban_columns jsonb not null default '["clarify","open","started"]'::jsonb;
+add column if not exists kanban_columns jsonb not null default '["open","started"]'::jsonb;
 
 alter table public.user_settings
 add column if not exists upcoming_badge_defaults jsonb not null default '{"version":2,"browser":false,"mobile":false,"dependenciesBrowser":false,"dependenciesMobile":false}'::jsonb;

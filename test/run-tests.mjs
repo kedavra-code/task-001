@@ -34,7 +34,6 @@ function task(overrides = {}) {
     taskCode: overrides.taskCode || "T-001",
     task: overrides.task || "Test task",
     googleStatus: "Offen",
-    wann: "sofort",
     dependsOnTaskIds: [],
     subtasks: [],
     startdatum: "",
@@ -113,11 +112,10 @@ test("done tasks are hidden from reminder popup", () => {
   }), todayTime), false);
 });
 
-test("clarification and due tasks produce reminder statuses", () => {
+test("due tasks produce reminder statuses", () => {
   assert.deepEqual(getDueReminderStatus(task({
-    wann: "...",
     faellig: "2026-06-03"
-  }), todayTime), ["clarify", "due today"]);
+  }), todayTime), ["due today"]);
 });
 
 test("task_subtasks rows override legacy task subtasks", () => {

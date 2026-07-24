@@ -96,7 +96,6 @@ const CARD_BADGE_CELL_WIDTH = 145;
 const CARD_BADGE_CELL_GAP = 5;
 const KANBAN_COLUMN_EXTRA_WIDTH = 36;
 const KANBAN_COLUMNS = [
-  { key: "clarify", title: "Clarify" },
   { key: "open", title: "Backlog" },
   { key: "started", title: "Doing" }
 ];
@@ -112,10 +111,8 @@ const TEXT_LIMITS = {
 };
 const CSV_COLUMNS = [
   "taskCode",
-  "handlungsdruck",
   "risiko",
   "impact",
-  "wann",
   "prio",
   "task",
   "beschreibung",
@@ -132,7 +129,6 @@ const CSV_COLUMNS = [
   "deletedAt"
 ];
 
-const WANN_OPTIONS = ["klären", "sofort", "Später", "Irgendwann"];
 const PRIO_OPTIONS = ["P1", "P2", "P3", "priorisieren"];
 const GOOGLE_STATUS_OPTIONS = ["Offen", "Gestartet", "Erledigt"];
 const TASK_STATUS_OPTIONS = [...GOOGLE_STATUS_OPTIONS, "Gelöscht"];
@@ -143,10 +139,6 @@ const DISPLAY_VALUE_LABELS = {
   "Gestartet": "Doing",
   "Erledigt": "Done",
   "Gelöscht": "Deleted",
-  "klären": "Clarify",
-  "sofort": "Now",
-  "Später": "Later",
-  "Irgendwann": "Someday",
   "priorisieren": "Prioritize",
   "hoch": "High",
   "mittel": "Medium",
@@ -208,7 +200,6 @@ const TAB_LAYOUT_ROW_COUNT = 2;
 const STATIC_TAB_IDS = ["all", "done"];
 const DUE_STATUS_OPTIONS = ["Alle", "heute starten", "heute fällig", "überfällig", "geplant", "ohne Fälligkeit"];
 const CRITERIA_PLACEHOLDER = "...";
-const HANDLUNGSDRUCK_OPTIONS = ["hoch", "mittel", "niedrig"];
 const RISIKO_OPTIONS = ["hoch", "mittel", "niedrig"];
 const IMPACT_OPTIONS = ["hoch", "mittel", "niedrig"];
 
@@ -216,8 +207,6 @@ const DEFAULT_COLUMN_FILTERS = {
   overviewSearch: "",
   taskCodeSort: "Standard",
   taskCode: "",
-  wannSort: "Standard",
-  wann: "Alle",
   prioSort: "Standard",
   prio: "Alle",
   taskSort: "Standard",
@@ -256,15 +245,10 @@ function getDefaultColumnFilters(tab = "open") {
   };
 }
 
-const WANN_HELP =
-  "When answers: when should we act?\n\nHigh urgency -> now\nMedium urgency -> later\nLow urgency -> someday\n\nDefault sort: clarify -> now -> later -> someday";
-
 const PRIO_HELP =
   "Priority answers: how important is this?\n\nIf damage is high or impact is high -> P1\nOtherwise, if damage and impact are both medium -> P2\nOtherwise -> P3\n\nDefault sort: prioritize -> P1 -> P2 -> P3";
 
 const EDIT_FIELD_HELP = {
-  handlungsdruck: "How urgently does the situation need a response? This derives When.",
-  wann: WANN_HELP,
   risiko: "How high is the damage if the task is not done, or done too late? Together with impact, this derives Prio.",
   impact: "How large is the task impact? Together with damage, this derives Prio.",
   prio: PRIO_HELP,
@@ -280,16 +264,6 @@ const EDIT_FIELD_HELP = {
   faellig: "Task due date."
 };
 
-const WANN_ORDER = {
-  klären: 0,
-  sofort: 1,
-  Sofort: 1,
-  Jetzt: 1,
-  Später: 2,
-  Irgendwann: 3,
-  Privat: 4
-};
-
 const PRIO_ORDER = {
   P1: 1,
   P2: 2,
@@ -298,10 +272,8 @@ const PRIO_ORDER = {
 };
 
 const EMPTY_TASK = {
-  handlungsdruck: CRITERIA_PLACEHOLDER,
   risiko: CRITERIA_PLACEHOLDER,
   impact: CRITERIA_PLACEHOLDER,
-  wann: CRITERIA_PLACEHOLDER,
   prio: CRITERIA_PLACEHOLDER,
   taskCode: "",
   dependsOnTaskId: "",
@@ -341,7 +313,6 @@ const SAMPLE_TASKS = [
   {
     ...EMPTY_TASK,
     id: crypto.randomUUID(),
-    wann: "sofort",
     prio: "P2",
     task: "Info an Team: Ticket Queue ohne AI",
     beschreibung: "Siehe CxS Meeting vom 19.5. ID Service Desk"
@@ -349,7 +320,6 @@ const SAMPLE_TASKS = [
   {
     ...EMPTY_TASK,
     id: crypto.randomUUID(),
-    wann: "Später",
     prio: "P1",
     task: "Wie verhalten sich GLPI u. Nessus beim Clonen?",
     beschreibung: "Link zum internen Ticket"
@@ -357,7 +327,6 @@ const SAMPLE_TASKS = [
   {
     ...EMPTY_TASK,
     id: crypto.randomUUID(),
-    wann: "Später",
     prio: "P1",
     task: "Vorbereitung Diaphanium (Termin 25.6.2026)",
     beschreibung: "Siehe auch Formular/Bogen von Robert (-> Email)"
@@ -365,28 +334,24 @@ const SAMPLE_TASKS = [
   {
     ...EMPTY_TASK,
     id: crypto.randomUUID(),
-    wann: "Später",
     prio: "P1",
     task: "Wie oft wird \"SQL Navigator\" & “Toad“ genutzt? Via GLPI checken"
   },
   {
     ...EMPTY_TASK,
     id: crypto.randomUUID(),
-    wann: "Später",
     prio: "P1",
     task: "Konzept Betriebsmodus PC Inventory für Lead Agiles + Tools"
   },
   {
     ...EMPTY_TASK,
     id: crypto.randomUUID(),
-    wann: "Irgendwann",
     prio: "P3",
     task: "BPMN2 mit Codex testen"
   },
   {
     ...EMPTY_TASK,
     id: crypto.randomUUID(),
-    wann: "sofort",
     prio: "P2",
     task: "BioMed: Kein eigenes SLA mehr, via Dept. SLA",
     beschreibung: "Magda fragen, was es kosten würde (nur Gruppe BioMed)"
@@ -394,31 +359,24 @@ const SAMPLE_TASKS = [
   {
     ...EMPTY_TASK,
     id: crypto.randomUUID(),
-    wann: "Privat",
     prio: "P1",
     task: "Lars 50er"
   },
   {
     ...EMPTY_TASK,
     id: crypto.randomUUID(),
-    wann: "Privat",
     prio: "P1",
     task: "Lars Steuern"
   },
   {
     ...EMPTY_TASK,
     id: crypto.randomUUID(),
-    wann: "Privat",
     prio: "P3",
     task: "Powerrack Innenabstand messen",
     beschreibung:
       "https://www.amazon.de/Synergee-Attachment-Designed-Holes-Safety-Presses-Sold/dp/B0FQDSLQ5J"
   }
 ];
-
-function getEffectiveWann(wann) {
-  return wann === CRITERIA_PLACEHOLDER ? "klären" : wann;
-}
 
 function getEffectivePrio(prio) {
   return prio === CRITERIA_PLACEHOLDER ? "priorisieren" : prio;
@@ -569,9 +527,6 @@ function normalizeColumnFilters(value, tab = "open") {
     }
   });
 
-  if (!["Alle", ...WANN_OPTIONS].includes(filters.wann)) {
-    filters.wann = defaults.wann;
-  }
   if (!STATUS_FILTER_OPTIONS.includes(filters.googleStatus)) {
     filters.googleStatus = defaults.googleStatus;
   }
@@ -586,8 +541,6 @@ function normalizeColumnFilters(value, tab = "open") {
 
 function getEditTooltip(field, value) {
   const labelByField = {
-    handlungsdruck: "Urgency",
-    wann: "When",
     risiko: "Damage",
     impact: "Impact",
     prio: "Prio",
@@ -607,9 +560,6 @@ function getEditTooltip(field, value) {
 
 function getDerivedCriteriaTooltip(task, field) {
   if (!task) return "";
-  if (field === "wann") {
-    return `Urgency: ${getDisplayValue(task.handlungsdruck)}`;
-  }
   if (field === "prio") {
     return [
       `Damage: ${getDisplayValue(task.risiko)}`,
@@ -625,13 +575,6 @@ function getTaskTooltip(task, field, value) {
   return [baseTooltip, criteriaTooltip].filter(Boolean).join("\n\n");
 }
 
-function deriveWann(handlungsdruck) {
-  if (handlungsdruck === CRITERIA_PLACEHOLDER) return CRITERIA_PLACEHOLDER;
-  if (handlungsdruck === "hoch") return "sofort";
-  if (handlungsdruck === "mittel") return "Später";
-  return "Irgendwann";
-}
-
 function derivePrio(risiko, impact) {
   if (risiko === CRITERIA_PLACEHOLDER || impact === CRITERIA_PLACEHOLDER) {
     return CRITERIA_PLACEHOLDER;
@@ -642,43 +585,16 @@ function derivePrio(risiko, impact) {
   return "P3";
 }
 
-function hasCompleteWannCriteria(task) {
-  return HANDLUNGSDRUCK_OPTIONS.includes(task.handlungsdruck);
-}
-
 function hasCompletePrioCriteria(task) {
   return RISIKO_OPTIONS.includes(task.risiko) && IMPACT_OPTIONS.includes(task.impact);
 }
 
 function syncDerivedCriteriaValues(task) {
   const next = { ...task };
-  if (hasCompleteWannCriteria(next)) {
-    next.wann = deriveWann(next.handlungsdruck);
-  }
   if (hasCompletePrioCriteria(next)) {
     next.prio = derivePrio(next.risiko, next.impact);
   }
   return next;
-}
-
-function inferWannCriteria(wann) {
-  if (wann === "klären" || wann === CRITERIA_PLACEHOLDER) {
-    return { handlungsdruck: CRITERIA_PLACEHOLDER };
-  }
-
-  if (wann === "Privat") {
-    return null;
-  }
-
-  if (wann === "sofort" || wann === "Sofort" || wann === "Jetzt") {
-    return { handlungsdruck: "hoch" };
-  }
-
-  if (wann === "Irgendwann") {
-    return { handlungsdruck: "niedrig" };
-  }
-
-  return { handlungsdruck: "mittel" };
 }
 
 function inferPrioCriteria(prio) {
@@ -708,7 +624,6 @@ function isStarted(task) {
 }
 
 function getKanbanColumnKey(task) {
-  if (getEffectiveWann(task.wann) === "klären") return "clarify";
   return isStarted(task) ? "started" : "open";
 }
 
@@ -841,11 +756,6 @@ function getDueReminderTasks(tasks) {
   return sortTasks(tasks).filter(shouldShowDueReminder);
 }
 
-function isClarificationPending(task) {
-  if (isDeleted(task)) return false;
-  return !isDone(task) && getEffectiveWann(task.wann) === "klären";
-}
-
 function isStartDateReached(task) {
   if (isDeleted(task)) return false;
   if (isDone(task)) return false;
@@ -908,8 +818,7 @@ function getReminderStatus(task) {
 
 function getDueReminderStatus(task) {
   if (isDone(task)) return [];
-  const clarificationBadge = !isStarted(task) && isClarificationPending(task) ? ["Clarify"] : [];
-  return [...clarificationBadge, ...getReminderStatus(task)];
+  return getReminderStatus(task);
 }
 
 function getDueReminderTooltip(task) {
@@ -918,20 +827,8 @@ function getDueReminderTooltip(task) {
   return `Task is upcoming:\n${reasons.map(reason => `- ${reason}`).join("\n")}`;
 }
 
-function promoteReadyToStartTasks(tasks) {
-  return tasks.map(task => {
-    if (isDeleted(task) || task.wann !== "Später" || !isStartDateReached(task)) return task;
-    if (hasCompleteWannCriteria(task)) return task;
-    return { ...task, wann: "sofort" };
-  });
-}
-
 function sortTasks(tasks) {
   return [...tasks].sort((a, b) => {
-    const wannDiff =
-      (WANN_ORDER[getEffectiveWann(a.wann)] ?? 99) - (WANN_ORDER[getEffectiveWann(b.wann)] ?? 99);
-    if (wannDiff !== 0) return wannDiff;
-
     const prioDiff =
       (PRIO_ORDER[getEffectivePrio(a.prio)] || 99) - (PRIO_ORDER[getEffectivePrio(b.prio)] || 99);
     if (prioDiff !== 0) return prioDiff;
@@ -988,7 +885,6 @@ function getTaskFilterCache(task, tasksById, childIdsByParent) {
       commentText,
       subtaskText,
       tagText,
-      getEffectiveWann(task.wann),
       getEffectivePrio(task.prio),
       getDisplayStatus(task),
       predecessorText,
@@ -1004,7 +900,6 @@ function getTaskFilterCache(task, tasksById, childIdsByParent) {
 function sortTasksWithFilters(tasks, columnFilters, tasksById = new Map(), childIdsByParent = new Map()) {
   const sorters = [
     { field: "taskCodeSort", getValue: (task) => task.taskCode },
-    { field: "wannSort", getValue: (task) => WANN_ORDER[getEffectiveWann(task.wann)] ?? 99 },
     { field: "prioSort", getValue: (task) => PRIO_ORDER[getEffectivePrio(task.prio)] ?? 99 },
     { field: "tagSort", getValue: (task) => getTaskTagText(task) },
     { field: "taskSort", getValue: (task) => task.task },
@@ -1338,7 +1233,7 @@ function repairMissingCreatedAtFallbacks(tasks) {
 
 function prepareTaskList(tasks) {
   return repairMissingCreatedAtFallbacks(
-    pruneExpiredDeletedTasks(promoteReadyToStartTasks(assignMissingTaskCodes(tasks)))
+    pruneExpiredDeletedTasks(assignMissingTaskCodes(tasks))
   );
 }
 
@@ -1348,30 +1243,18 @@ function normalizeTask(task) {
     : task.status === "Erledigt"
       ? "Erledigt"
       : "Offen";
-  const wann =
-    task.wann === "Jetzt" || task.wann === "Sofort" || task.wann === "WIP"
-      ? "sofort"
-      : WANN_OPTIONS.includes(task.wann) || task.wann === CRITERIA_PLACEHOLDER
-        ? task.wann
-        : "sofort";
   const prio =
     PRIO_OPTIONS.includes(task.prio) || task.prio === CRITERIA_PLACEHOLDER
       ? task.prio
       : "priorisieren";
-  const inferredWannCriteria = inferWannCriteria(wann);
   const inferredPrioCriteria = inferPrioCriteria(prio);
-  const handlungsdruck = HANDLUNGSDRUCK_OPTIONS.includes(task.handlungsdruck)
-    ? task.handlungsdruck
-    : inferredWannCriteria?.handlungsdruck || CRITERIA_PLACEHOLDER;
   const risiko = RISIKO_OPTIONS.includes(task.risiko) ? task.risiko : inferredPrioCriteria.risiko;
   const impact = IMPACT_OPTIONS.includes(task.impact) ? task.impact : inferredPrioCriteria.impact;
 
   return syncDerivedCriteriaValues({
     id: task.id || crypto.randomUUID(),
-    handlungsdruck,
     risiko,
     impact,
-    wann,
     prio,
     taskCode: normalizeText(task.taskCode),
     dependsOnTaskIds: normalizeTaskIds(task.dependsOnTaskIds?.length ? task.dependsOnTaskIds : task.dependsOnTaskId),
@@ -1402,10 +1285,8 @@ function taskToRow(task, userId) {
     id: task.id,
     user_id: userId,
     task_code: task.taskCode,
-    handlungsdruck: task.handlungsdruck,
     risiko: task.risiko,
     impact: task.impact,
-    wann: task.wann,
     prio: task.prio,
     depends_on_task_id: getPredecessorIds(task)[0] || null,
     depends_on_task_ids: getPredecessorIds(task),
@@ -1427,10 +1308,8 @@ function rowToTask(row) {
   return normalizeTask({
     id: row.id,
     taskCode: row.task_code,
-    handlungsdruck: row.handlungsdruck,
     risiko: row.risiko,
     impact: row.impact,
-    wann: row.wann,
     prio: row.prio,
     dependsOnTaskIds: normalizeTaskIds(row.depends_on_task_ids?.length ? row.depends_on_task_ids : row.depends_on_task_id),
     dependsOnTaskId: normalizeTaskIds(row.depends_on_task_ids?.length ? row.depends_on_task_ids : row.depends_on_task_id)[0] || "",
@@ -2405,7 +2284,6 @@ function getTaskShareText(task) {
     comments.length > 0 ? `Comments: ${comments.map(comment => comment.text).join("; ")}` : "",
     subtasks.length > 0 ? `Subtasks: ${subtasks.map(formatSubtaskForDisplay).join("; ")}` : "",
     normalizeTags(task.tags).length > 0 ? `Tags: ${normalizeTags(task.tags).map(tag => `#${tag}`).join(", ")}` : "",
-    `When: ${getDisplayValue(getEffectiveWann(task.wann))}`,
     `Prio: ${getDisplayValue(getEffectivePrio(task.prio))}`,
     `Status: ${getDisplayValue(getDisplayStatus(task))}`,
     task.faellig ? `Due: ${formatDate(task.faellig)}` : "",
@@ -2780,10 +2658,6 @@ function applyCriteriaChange(task, field, value) {
     next.completedAt = value === "Erledigt" ? normalizeDateValue(next.completedAt) || getTodayDateValue() : "";
   }
 
-  if (field === "handlungsdruck") {
-    next.wann = deriveWann(next.handlungsdruck);
-  }
-
   if (field === "risiko" || field === "impact") {
     next.prio = derivePrio(next.risiko, next.impact);
   }
@@ -2954,10 +2828,8 @@ function removeCommentAt(comments, id) {
 function getEditableTaskSnapshot(task) {
   if (!task) return null;
   return {
-    handlungsdruck: task.handlungsdruck,
     risiko: task.risiko,
     impact: task.impact,
-    wann: task.wann,
     prio: task.prio,
     task: normalizeText(task.task),
     beschreibung: normalizeText(task.beschreibung),
@@ -3654,7 +3526,7 @@ export default function App() {
   }, [session, isCurrentUserAllowed]);
 
   useEffect(() => {
-    const refreshedTasks = pruneExpiredDeletedTasks(promoteReadyToStartTasks(tasks));
+    const refreshedTasks = pruneExpiredDeletedTasks(tasks);
     if (refreshedTasks.length !== tasks.length || refreshedTasks.some((task, index) => task !== tasks[index])) {
       setTasks(refreshedTasks);
     }
@@ -3732,8 +3604,6 @@ export default function App() {
       : sortTasksWithFilters(tasks, columnFilters, tasksById, childIdsByParent);
     return sortedTasks.filter(task => {
       const cache = taskFilterCacheById.get(task.id) || getTaskFilterCache(task, tasksById, childIdsByParent);
-      const matchesWann =
-        columnFilters.wann === "Alle" || getEffectiveWann(task.wann) === columnFilters.wann;
       const matchesPrio =
         columnFilters.prio === "Alle" || getEffectivePrio(task.prio) === columnFilters.prio;
       const matchesViewStatus = activeAppTab === REVIEW_TAB
@@ -3765,7 +3635,6 @@ export default function App() {
 
       return (
         includesFilter(task.taskCode, columnFilters.taskCode) &&
-        matchesWann &&
         matchesPrio &&
         matchesDueStatus &&
         matchesTagFilter &&
@@ -3925,19 +3794,13 @@ export default function App() {
   }
 
   const taskSummary = useMemo(() => {
-    const byWann = WANN_OPTIONS.reduce((acc, wann) => {
-      acc[wann] = 0;
-      return acc;
-    }, {});
     const tagCounts = new Map();
     const nextCounts = {
-      byWann,
       open: 0,
       started: 0,
       newest: 0,
       done: 0,
       deleted: 0,
-      clarification: 0,
       startsToday: 0,
       dueToday: 0,
       overdue: 0,
@@ -3958,9 +3821,6 @@ export default function App() {
       if (!done) nextCounts.newest += 1;
       if (done) nextCounts.done += 1;
       if (!done) {
-        const wann = getEffectiveWann(task.wann);
-        if (wann in byWann) byWann[wann] += 1;
-        if (wann === "klären") nextCounts.clarification += 1;
         normalizeTags(task.tags).forEach(tag => {
           const key = tag.toLowerCase();
           tagCounts.set(key, (tagCounts.get(key) || 0) + 1);
@@ -4028,7 +3888,6 @@ export default function App() {
     const labels = {
       overviewSearch: "Search",
       taskCode: "ID",
-      wann: "When",
       prio: "Prio",
       tagFilter: "Tag",
       task: "Task",
@@ -4042,7 +3901,6 @@ export default function App() {
       dueStatus: "Due status",
       completedAt: "Done on",
       deletedAt: "Deleted on",
-      wannSort: "When sorted",
       prioSort: "Priority sorted",
       tagSort: "Tag sorted",
       taskSort: "Task sorted",
@@ -5397,16 +5255,6 @@ export default function App() {
         />
       </FilterSortField>
       <label>
-        <span>Wann</span>
-        <select value={columnFilters.wann} onChange={event => updateColumnFilter("wann", event.target.value)}>
-          <option value="Alle">All</option>
-          {WANN_OPTIONS.map(option => (
-            <option key={option} value={option}>{getDisplayValue(option)}</option>
-          ))}
-        </select>
-        <SortToggle value={columnFilters.wannSort} onChange={value => updateColumnFilter("wannSort", value)} ariaLabel="Sort When" />
-      </label>
-      <label>
         <span>Prio</span>
         <select value={columnFilters.prio} onChange={event => updateColumnFilter("prio", event.target.value)}>
           <option value="Alle">All</option>
@@ -5866,14 +5714,6 @@ export default function App() {
 
             <div className="formRow compact captureAdvancedFields">
               <SelectField
-                label="Urgency"
-                value={draft.handlungsdruck}
-                options={HANDLUNGSDRUCK_OPTIONS}
-                onChange={value => updateDraft("handlungsdruck", value)}
-                title={getTooltip("handlungsdruck", draft.handlungsdruck)}
-                requiredChoice
-              />
-              <SelectField
                 label="Damage"
                 value={draft.risiko}
                 options={RISIKO_OPTIONS}
@@ -5909,9 +5749,6 @@ export default function App() {
             </div>
 
             <div className="derivedValuesRow captureDerivedRow" aria-label="Derived values">
-              <span>
-                When: <strong className={`pill ${getWannClass(getEffectiveWann(draft.wann))}`} title={getTooltipForTask(draft, "wann", getEffectiveWann(draft.wann))}>{getDisplayValue(getEffectiveWann(draft.wann))}</strong>
-              </span>
               <span>
                 Prio: <strong className={`prio ${getPrioClass(getEffectivePrio(draft.prio))}`} data-prio={getEffectivePrio(draft.prio)} title={getTooltipForTask(draft, "prio", getEffectivePrio(draft.prio))}>{getDisplayValue(getEffectivePrio(draft.prio))}</strong>
               </span>
@@ -5954,9 +5791,6 @@ export default function App() {
                 <th>Done</th>
                 <th>ID</th>
                 <th>
-                  <span className="helpLabel" title={WANN_HELP}>Wann</span>
-                </th>
-                <th>
                   <span className="helpLabel" title={PRIO_HELP}>Prio</span>
                 </th>
                 <th>Tag</th>
@@ -5983,18 +5817,6 @@ export default function App() {
                     ariaLabel="Select ID"
                   />
                   <SortToggle value={columnFilters.taskCodeSort} onChange={value => updateColumnFilter("taskCodeSort", value)} ariaLabel="Sort ID" />
-                </th>
-                <th>
-                  <select
-                    value={columnFilters.wann}
-                    onChange={event => updateColumnFilter("wann", event.target.value)}
-                  >
-                    <option value="Alle">All</option>
-                    {WANN_OPTIONS.map(option => (
-                      <option key={option} value={option}>{getDisplayValue(option)}</option>
-                    ))}
-                  </select>
-                  <SortToggle value={columnFilters.wannSort} onChange={value => updateColumnFilter("wannSort", value)} ariaLabel="Sort When" />
                 </th>
                 <th>
                   <select
@@ -6311,7 +6133,7 @@ export default function App() {
                   <li>The header view icon switches the current session between List and Kanban. That toggle is temporary; persistent defaults are changed only in Options.</li>
                   <li>Browser and phone can have separate default view modes and separate edit-section defaults. Edit sections default to expanded on both devices and are stored in user settings when the Supabase columns exist, with local storage as fallback.</li>
                   <li>Task details can be switched with the header icon for the current view. Options set only the default for fresh sessions: Minimum hides parameter badges and card content, including the Additional details label. Maximum shows parameter badges; cards with a description, subtasks, or comments then show a collapsible Additional details label below the badges, and opening it reveals the labeled content panels.</li>
-                  <li>Kanban groups active tasks into the enabled columns Clarify, Backlog, and Doing.</li>
+                  <li>Kanban groups active tasks into the enabled columns Backlog and Doing.</li>
                   <li>On phones, Kanban scrolls horizontally by column, shows edge hints when more columns are available, and snaps to the next column while scrolling.</li>
                 </ul>
               </section>
@@ -6319,9 +6141,7 @@ export default function App() {
               <section>
                 <h3>Task Values</h3>
                 <ul>
-                  <li>When answers: when should we act? It is derived from urgency. Default sort: Clarify, Now, Later, Someday.</li>
                   <li>Priority answers: how important is this? It is derived from damage and impact. Default sort: Prioritize, P1, P2, P3.</li>
-                  <li>Urgency answers how urgently the situation needs a response. Priority describes importance; urgency describes time pressure. Both can be independent.</li>
                   <li>When a task first becomes Doing and has no start date, the app sets the start date to today.</li>
                 </ul>
               </section>
@@ -7660,29 +7480,6 @@ function TaskRow({
         {isEditing ? (
           <div className="stackedControls">
             <span className="tableEditParameterLabel">Parameter</span>
-            <select
-              value={data.handlungsdruck}
-              onChange={event => onChange("handlungsdruck", event.target.value)}
-              title={getTooltip("handlungsdruck", data.handlungsdruck)}
-            >
-              <option value={CRITERIA_PLACEHOLDER} disabled>
-                {CRITERIA_PLACEHOLDER} select
-              </option>
-              {HANDLUNGSDRUCK_OPTIONS.map(option => (
-                <option key={option} value={option}>{getDisplayValue(option)}</option>
-              ))}
-            </select>
-            <span className={`pill ${getWannClass(getEffectiveWann(data.wann))}`} title={getTooltip("wann", getEffectiveWann(data.wann))}>{getDisplayValue(getEffectiveWann(data.wann))}</span>
-          </div>
-        ) : (
-          <span className={`pill ${getWannClass(getEffectiveWann(task.wann))}`} title={getTooltip("wann", getEffectiveWann(task.wann))}>
-            {getDisplayValue(getEffectiveWann(task.wann))}
-          </span>
-        )}
-      </td>
-      <td>
-        {isEditing ? (
-          <div className="stackedControls">
             <select value={data.risiko} onChange={event => onChange("risiko", event.target.value)} title={getTooltip("risiko", data.risiko)}>
               <option value={CRITERIA_PLACEHOLDER} disabled>
                 {CRITERIA_PLACEHOLDER} select
@@ -8131,7 +7928,7 @@ function MobileTaskCard({
   const normalizedCardBadgeColumns = normalizeCardBadgeColumns(cardBadgeColumns);
   const effectiveOverviewBadgeColumnValue = isMobileViewport ? "default" : normalizedCardBadgeColumns.overview;
   const effectiveEditBadgeColumnValue = isMobileViewport ? "default" : normalizedCardBadgeColumns.edit;
-  const visibleMetaItemCount = 7;
+  const visibleMetaItemCount = 6;
   const overviewMetaPaddingCount = getCardBadgePaddingCount(visibleMetaItemCount, effectiveOverviewBadgeColumnValue);
   const editMetaPaddingCount = getCardBadgePaddingCount(visibleMetaItemCount, effectiveEditBadgeColumnValue);
   const shouldShowOverviewBadgeSection = Boolean(showBadgeSection && !isEditing);
@@ -8324,17 +8121,14 @@ function MobileTaskCard({
                   event.stopPropagation();
                 }}
               >
-                <MobileValue label="When" value={getDisplayValue(getEffectiveWann(data.wann))} className={`pill ${getWannClass(getEffectiveWann(data.wann))}`} tooltipNote={getDerivedCriteriaTooltip(data, "wann")}>
-                  {getDisplayValue(getEffectiveWann(data.wann))}
-                </MobileValue>
                 <MobileValue label="Prio" value={getDisplayValue(getEffectivePrio(data.prio))} className={`prio ${getPrioClass(getEffectivePrio(data.prio))}`} tooltipNote={getDerivedCriteriaTooltip(data, "prio")} data-prio={getEffectivePrio(data.prio)}>
                   {getDisplayValue(getEffectivePrio(data.prio))}
                 </MobileValue>
-                <MobileValue label="Status" value={getDisplayValue(getDisplayStatus(data))} className={`statusBadge ${getStatusClass(getDisplayStatus(data))}`}>
-                  {getDisplayValue(getDisplayStatus(data))}
-                </MobileValue>
                 <MobileValue label="Tag" value={normalizeTags(data.tags)[0] || ""} className="tagPill">
                   {normalizeTags(data.tags)[0] ? `#${normalizeTags(data.tags)[0]}` : "-"}
+                </MobileValue>
+                <MobileValue label="Status" value={getDisplayValue(getDisplayStatus(data))} className={`statusBadge ${getStatusClass(getDisplayStatus(data))}`}>
+                  {getDisplayValue(getDisplayStatus(data))}
                 </MobileValue>
                 <MobileValue label="Created" value={createdDateText} className="mobileDateBadge" alwaysShowInlineLabel>
                   {createdDateText || "-"}
@@ -8350,17 +8144,6 @@ function MobileTaskCard({
             )}
           </summary>
           <div className="mobileEditGrid">
-          <label className="mobileEditCriterionField" title={getTooltip("handlungsdruck", data.handlungsdruck)}>
-            <span>Urgency</span>
-            <select value={data.handlungsdruck} onChange={event => onChange("handlungsdruck", event.target.value)} title={getTooltip("handlungsdruck", data.handlungsdruck)}>
-              <option value={CRITERIA_PLACEHOLDER} disabled>
-                {CRITERIA_PLACEHOLDER} select
-              </option>
-              {HANDLUNGSDRUCK_OPTIONS.map(option => (
-                <option key={option} value={option}>{getDisplayValue(option)}</option>
-              ))}
-            </select>
-          </label>
           <label className="mobileEditCriterionField" title={getTooltip("risiko", data.risiko)}>
             <span>Damage</span>
             <select value={data.risiko} onChange={event => onChange("risiko", event.target.value)} title={getTooltip("risiko", data.risiko)}>
@@ -8384,9 +8167,6 @@ function MobileTaskCard({
             </select>
           </label>
           <div className="derivedValuesRow mobileEditDerived mobileEditFull" aria-label="Derived values">
-            <span>
-              When: <strong className={`pill ${getWannClass(getEffectiveWann(data.wann))}`} title={getTooltip("wann", getEffectiveWann(data.wann))}>{getDisplayValue(getEffectiveWann(data.wann))}</strong>
-            </span>
             <span>
               Prio: <strong className={`prio ${getPrioClass(getEffectivePrio(data.prio))}`} data-prio={getEffectivePrio(data.prio)} title={getTooltip("prio", getEffectivePrio(data.prio))}>{getDisplayValue(getEffectivePrio(data.prio))}</strong>
             </span>
@@ -8554,17 +8334,14 @@ function MobileTaskCard({
         <details className="mobileBadgeSection" open={badgeSectionDefaultOpen}>
           <summary>Badges</summary>
           <div className="mobileMeta">
-            <MobileValue label="When" value={getDisplayValue(getEffectiveWann(task.wann))} className={`pill ${getWannClass(getEffectiveWann(task.wann))}`} tooltipNote={getDerivedCriteriaTooltip(task, "wann")}>
-              {getDisplayValue(getEffectiveWann(task.wann))}
-            </MobileValue>
             <MobileValue label="Prio" value={getDisplayValue(getEffectivePrio(task.prio))} className={`prio ${getPrioClass(getEffectivePrio(task.prio))}`} tooltipNote={getDerivedCriteriaTooltip(task, "prio")} data-prio={getEffectivePrio(task.prio)}>
               {getDisplayValue(getEffectivePrio(task.prio))}
             </MobileValue>
-            <MobileValue label="Status" value={getDisplayStatus(task)} className={`statusBadge ${getStatusClass(getDisplayStatus(task))}`}>
-              {getDisplayValue(getDisplayStatus(task))}
-            </MobileValue>
             <MobileValue label="Tag" value={firstTag} className="tagPill">
               {firstTag ? `#${firstTag}` : "-"}
+            </MobileValue>
+            <MobileValue label="Status" value={getDisplayStatus(task)} className={`statusBadge ${getStatusClass(getDisplayStatus(task))}`}>
+              {getDisplayValue(getDisplayStatus(task))}
             </MobileValue>
             <MobileValue label="Created" value={createdDateText} className="mobileDateBadge" alwaysShowInlineLabel>
               {createdDateText || "-"}
@@ -8580,17 +8357,14 @@ function MobileTaskCard({
         </details>
       ) : (
         <div className="mobileMeta">
-          <MobileValue label="When" value={getDisplayValue(getEffectiveWann(task.wann))} className={`pill ${getWannClass(getEffectiveWann(task.wann))}`} tooltipNote={getDerivedCriteriaTooltip(task, "wann")}>
-            {getDisplayValue(getEffectiveWann(task.wann))}
-          </MobileValue>
           <MobileValue label="Prio" value={getDisplayValue(getEffectivePrio(task.prio))} className={`prio ${getPrioClass(getEffectivePrio(task.prio))}`} tooltipNote={getDerivedCriteriaTooltip(task, "prio")} data-prio={getEffectivePrio(task.prio)}>
             {getDisplayValue(getEffectivePrio(task.prio))}
           </MobileValue>
-          <MobileValue label="Status" value={getDisplayStatus(task)} className={`statusBadge ${getStatusClass(getDisplayStatus(task))}`}>
-            {getDisplayValue(getDisplayStatus(task))}
-          </MobileValue>
           <MobileValue label="Tag" value={firstTag} className="tagPill">
             {firstTag ? `#${firstTag}` : "-"}
+          </MobileValue>
+          <MobileValue label="Status" value={getDisplayStatus(task)} className={`statusBadge ${getStatusClass(getDisplayStatus(task))}`}>
+            {getDisplayValue(getDisplayStatus(task))}
           </MobileValue>
           <MobileValue label="Created" value={createdDateText} className="mobileDateBadge" alwaysShowInlineLabel>
             {createdDateText || "-"}
@@ -8659,17 +8433,14 @@ function MobileTaskCard({
                 <>
                   <MobileDescriptionPanel title="Parameter">
                 <div className="mobileMeta">
-                  <MobileValue label="When" value={getDisplayValue(getEffectiveWann(task.wann))} className={`pill ${getWannClass(getEffectiveWann(task.wann))}`} tooltipNote={getDerivedCriteriaTooltip(task, "wann")}>
-                    {getDisplayValue(getEffectiveWann(task.wann))}
-                  </MobileValue>
                   <MobileValue label="Prio" value={getDisplayValue(getEffectivePrio(task.prio))} className={`prio ${getPrioClass(getEffectivePrio(task.prio))}`} tooltipNote={getDerivedCriteriaTooltip(task, "prio")} data-prio={getEffectivePrio(task.prio)}>
                     {getDisplayValue(getEffectivePrio(task.prio))}
                   </MobileValue>
-                  <MobileValue label="Status" value={getDisplayStatus(task)} className={`statusBadge ${getStatusClass(getDisplayStatus(task))}`}>
-                    {getDisplayValue(getDisplayStatus(task))}
-                  </MobileValue>
                   <MobileValue label="Tag" value={firstTag} className="tagPill">
                     {firstTag ? `#${firstTag}` : "-"}
+                  </MobileValue>
+                  <MobileValue label="Status" value={getDisplayStatus(task)} className={`statusBadge ${getStatusClass(getDisplayStatus(task))}`}>
+                    {getDisplayValue(getDisplayStatus(task))}
                   </MobileValue>
                   <MobileValue label="Created" value={createdDateText} className="mobileDateBadge" alwaysShowInlineLabel>
                     {createdDateText || "-"}
@@ -8861,13 +8632,6 @@ function ComboInput({ value, options, onChange, placeholder, ariaLabel, maxLengt
       {guidance && <InputGuidance value={value} limits={guidance} label={guidanceLabel || ariaLabel || "Value"} />}
     </div>
   );
-}
-
-function getWannClass(wann) {
-  const normalized = String(wann)
-    .toLowerCase()
-    .replace("ä", "ae");
-  return `wann-${normalized}`;
 }
 
 function getPrioClass(prio) {

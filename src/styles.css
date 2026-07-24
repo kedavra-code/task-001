@@ -3365,7 +3365,6 @@ tr[data-edit-surface="true"] .taskCell {
   font-weight: 700;
 }
 
-.pill,
 .prio {
   display: inline-flex;
   align-items: center;
@@ -3376,38 +3375,6 @@ tr[data-edit-surface="true"] .taskCell {
   color: var(--badge-color, inherit);
   font-weight: 700;
   white-space: nowrap;
-}
-
-.wann-jetzt,
-.wann-sofort {
-  --badge-bg: #ffd9d9;
-  --badge-color: #8a1111;
-}
-
-.wann-klaeren {
-  --badge-bg: #fff1cc;
-  --badge-color: #7a4d00;
-}
-
-.wann-spaeter,
-.wann-später {
-  --badge-bg: #d9f4e5;
-  --badge-color: #145a32;
-}
-
-.wann-irgendwann {
-  --badge-bg: transparent;
-  --badge-color: inherit;
-}
-
-.wann-wip {
-  --badge-bg: #d7ecfb;
-  --badge-color: #114f7c;
-}
-
-.wann-privat {
-  --badge-bg: #e7e9ec;
-  --badge-color: #3a434d;
 }
 
 .prio-p1 {
