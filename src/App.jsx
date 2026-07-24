@@ -4085,6 +4085,7 @@ export default function App() {
       isMobileViewport,
       cardBadgeColumns,
       hideOverviewDetailsUntilDescriptionOpen: shouldHideOverviewDetailsUntilOpen && !isTaskDetailsOpen,
+      alwaysExpandDetails: taskDetailDisplayMode === "maximum",
       showBadgeSection: false,
       badgeSectionDefaultOpen: false,
       ...overrides
@@ -6239,7 +6240,7 @@ export default function App() {
                 <ul>
                   <li>The header view icon switches the current session between List and Kanban. That toggle is temporary; persistent defaults are changed only in Options.</li>
                   <li>Browser and phone can have separate default view modes and separate edit-section defaults. Edit sections default to expanded on both devices and are stored in user settings when the Supabase columns exist, with local storage as fallback.</li>
-                  <li>Task details can be switched with the header icon for the current view. Options set only the default for fresh sessions: Minimum hides parameter badges and card content, including the Additional details label. Maximum shows parameter badges; cards with a description, subtasks, or comments then show a collapsible Additional details label below the badges, and opening it reveals the labeled content panels.</li>
+                  <li>Task details can be switched with the header icon for the current view. Options set only the default for fresh sessions: Minimum hides parameter badges and card content, including the Additional details label. Maximum shows parameter badges; cards with a description, subtasks, or comments show their labeled content panels directly below the badges, with no Additional details label or toggle to click.</li>
                   <li>Kanban groups tasks into the enabled columns Backlog, Doing, and Done; the Done column is the only place in the All tab and tag scopes where done tasks show up outside the dedicated Done tab/menu view.</li>
                   <li>On browser, dragging a card to another Kanban column changes its status (Backlog, Doing, or Done) directly, including the usual start-date auto-fill and completion checks; the current view stays put instead of jumping to that status.</li>
                   <li>On phones, Kanban scrolls horizontally by column, shows edge hints when more columns are available, and snaps to the next column while scrolling.</li>
@@ -6260,15 +6261,15 @@ export default function App() {
                   <li>Cards use fixed badge cells so values stay aligned across tasks. Phones always use three badge columns; browser list, browser edit, and browser Kanban badge columns can be configured separately in Options.</li>
                   <li>Empty values show a dash. Start and Due keep their labels visible and may wrap to two lines on phones after the colon so the date stays visible.</li>
                   <li>Reached start dates, due-today dates, and overdue due dates are shown by coloring the date value red instead of adding separate badges.</li>
-                  <li>Predecessors and Successors are shown as labeled clickable text in the card details outside edit mode and can be clicked to jump to the related task while keeping the current view. In Minimum detail mode, card details and the Additional details label stay hidden; in Maximum detail mode, badges are visible and cards with description, subtasks, or comments can open the labeled detail panels through the Additional details label.</li>
-                  <li>Adjacent icons use the same size. Share, delete, and completion are the card action icons; relation arrow icons are intentionally not shown. The Share icon includes a direct task URL such as ?task-id=T-123, which opens the task in Maximum detail view after login. Clicking a task ID locally opens that card with the same Maximum detail layout, without changing the global view mode, and renders detail content only for that one currently open card. Task content opens through the collapsible Additional details label below the badges when description, subtasks, or comments exist. The save icon is a disk, completion uses a check, delete uses trash, close uses x, and a due-reminder warning uses a red exclamation mark near the task ID.</li>
+                  <li>Predecessors and Successors are shown as labeled clickable text in the card details outside edit mode and can be clicked to jump to the related task while keeping the current view. In Minimum detail mode, card details and the Additional details label stay hidden; in Maximum detail mode, badges are visible and cards with description, subtasks, or comments show the labeled detail panels directly, with no Additional details label needed.</li>
+                  <li>Adjacent icons use the same size. Share, delete, and completion are the card action icons; relation arrow icons are intentionally not shown. The Share icon includes a direct task URL such as ?task-id=T-123, which opens the task in Maximum detail view after login. Clicking a task ID while the session is in Minimum mode locally opens just that card's badges, without changing the global view mode or affecting any other card; its description/subtasks/comments still open through a collapsible Additional details label below the badges, unlike true Maximum mode where those panels show directly with no label to click. The save icon is a disk, completion uses a check, delete uses trash, close uses x, and a due-reminder warning uses a red exclamation mark near the task ID.</li>
                 </ul>
               </section>
 
               <section>
                 <h3>Editing</h3>
                 <ul>
-                  <li>Edit mode is a single-task surface divided into Parameter, Description, Subtasks, and Comments. Each section is collapsible and its default open/closed state can be configured separately for browser and phone in Options; the default is expanded. Opening card details through Additional details opens only one task at a time and groups the details into labeled panels.</li>
+                  <li>Edit mode is a single-task surface divided into Parameter, Description, Subtasks, and Comments. Each section is collapsible and its default open/closed state can be configured separately for browser and phone in Options; the default is expanded. In Minimum overview mode, opening card details through Additional details opens only one task's panels at a time, closing any previously opened card; Maximum overview mode shows every card's labeled panels at once since there is no toggle to open/close.</li>
                   <li>Collapsed Parameter still shows the compact overview values. Tapping a compact value on touch devices shows its tooltip; tapping the section heading opens the editable controls.</li>
                   <li>Normal task changes are saved with the task-level disk icon. Description, comment, and subtask edits each use their own local disk icon where the edit happens; while any local text draft is unsaved, both the local disk and the task-level disk are highlighted, and saving either the local draft or all changes clears the relevant highlighted icons. The local description x asks whether to save or discard that description draft; clicking outside leaves the inline editor open.</li>
                   <li>If you leave an edit surface with unsaved changes, the app asks whether to save or discard. Completing and deleting tasks keep their explicit confirmation prompts.</li>
@@ -8004,6 +8005,7 @@ function MobileTaskCard({
   isMobileViewport = false,
   cardBadgeColumns = DEFAULT_CARD_BADGE_COLUMNS,
   hideOverviewDetailsUntilDescriptionOpen = false,
+  alwaysExpandDetails = false,
   showBadgeSection = false,
   badgeSectionDefaultOpen = true
 }) {
@@ -8527,71 +8529,100 @@ function MobileTaskCard({
         </>
       )}
       {hasContentDetails && !hideOverviewDetailsUntilDescriptionOpen && (
-        <details key={`${task.id}-details-${isDescriptionOpen ? "open" : "closed"}`} className="mobileDescriptionBlock mobileDetailsDisclosure" open={isDescriptionOpen}>
-          <summary
-            onClick={event => {
-              event.preventDefault();
-              onToggleDescription();
-            }}
-          >
-            Additional details
-          </summary>
-          {isDescriptionOpen && (
-            <>
-              {hideOverviewDetailsUntilDescriptionOpen && (
-                <>
-                  <MobileDescriptionPanel title="Parameter">
-                <div className="mobileMeta">
-                  <MobileValue label="Prio" value={getDisplayValue(getEffectivePrio(task.prio))} className={`prio ${getPrioClass(getEffectivePrio(task.prio))}`} tooltipNote={getDerivedCriteriaTooltip(task, "prio")} data-prio={getEffectivePrio(task.prio)}>
-                    {getDisplayValue(getEffectivePrio(task.prio))}
-                  </MobileValue>
-                  <MobileValue label="Tag" value={firstTag} className="tagPill">
-                    {firstTag ? `#${firstTag}` : "-"}
-                  </MobileValue>
-                  <MobileValue label="Status" value={getDisplayStatus(task)} className={`statusBadge ${getStatusClass(getDisplayStatus(task))}`}>
-                    {getDisplayValue(getDisplayStatus(task))}
-                  </MobileValue>
-                  <MobileValue label="Created" value={createdDateText} className="mobileDateBadge" alwaysShowInlineLabel>
-                    {createdDateText || "-"}
-                  </MobileValue>
-                  <MobileValue label="Start" value={startDateText} className={`mobileDateBadge ${isTaskOrSubtaskStartAttention(task) ? "overdue" : ""}`} tooltipNote={getStartDateStateText(task)} alwaysShowInlineLabel>
-                    {startDateText || "-"}
-                  </MobileValue>
-                  <MobileValue label="Due" value={dueDateText} className={`mobileDateBadge ${isTaskOrSubtaskDueAttention(task) ? "overdue" : ""}`} tooltipNote={getDueDateStateText(task)} alwaysShowInlineLabel>
-                    {dueDateText || "-"}
-                  </MobileValue>
-                  {renderMobileMetaPaddingSlots(overviewMetaPaddingCount, `overview-meta-padding-${task.id}`)}
-                </div>
+        alwaysExpandDetails ? (
+          <div className="mobileDescriptionBlock mobileDetailsExpanded">
+            {hasDependencyDetails && (
+              <MobileDescriptionPanel title="Dependencies">
+                <MobileDependencyRelations
+                  predecessorTargets={predecessorTargets}
+                  successorTargets={successorTargets}
+                  onShowTask={onShowTask}
+                />
+              </MobileDescriptionPanel>
+            )}
+            {hasDescription && (
+              <MobileDescriptionPanel title="Description">
+                <DescriptionBlock text={task.beschreibung} />
+              </MobileDescriptionPanel>
+            )}
+            {hasSubtasks && (
+              <MobileDescriptionPanel title="Subtasks">
+                <SubtaskList subtasks={task.subtasks} />
+              </MobileDescriptionPanel>
+            )}
+            {hasComments && (
+              <MobileDescriptionPanel title="Comments">
+                <CommentList comments={task.comments} />
+              </MobileDescriptionPanel>
+            )}
+          </div>
+        ) : (
+          <details key={`${task.id}-details-${isDescriptionOpen ? "open" : "closed"}`} className="mobileDescriptionBlock mobileDetailsDisclosure" open={isDescriptionOpen}>
+            <summary
+              onClick={event => {
+                event.preventDefault();
+                onToggleDescription();
+              }}
+            >
+              Additional details
+            </summary>
+            {isDescriptionOpen && (
+              <>
+                {hideOverviewDetailsUntilDescriptionOpen && (
+                  <>
+                    <MobileDescriptionPanel title="Parameter">
+                  <div className="mobileMeta">
+                    <MobileValue label="Prio" value={getDisplayValue(getEffectivePrio(task.prio))} className={`prio ${getPrioClass(getEffectivePrio(task.prio))}`} tooltipNote={getDerivedCriteriaTooltip(task, "prio")} data-prio={getEffectivePrio(task.prio)}>
+                      {getDisplayValue(getEffectivePrio(task.prio))}
+                    </MobileValue>
+                    <MobileValue label="Tag" value={firstTag} className="tagPill">
+                      {firstTag ? `#${firstTag}` : "-"}
+                    </MobileValue>
+                    <MobileValue label="Status" value={getDisplayStatus(task)} className={`statusBadge ${getStatusClass(getDisplayStatus(task))}`}>
+                      {getDisplayValue(getDisplayStatus(task))}
+                    </MobileValue>
+                    <MobileValue label="Created" value={createdDateText} className="mobileDateBadge" alwaysShowInlineLabel>
+                      {createdDateText || "-"}
+                    </MobileValue>
+                    <MobileValue label="Start" value={startDateText} className={`mobileDateBadge ${isTaskOrSubtaskStartAttention(task) ? "overdue" : ""}`} tooltipNote={getStartDateStateText(task)} alwaysShowInlineLabel>
+                      {startDateText || "-"}
+                    </MobileValue>
+                    <MobileValue label="Due" value={dueDateText} className={`mobileDateBadge ${isTaskOrSubtaskDueAttention(task) ? "overdue" : ""}`} tooltipNote={getDueDateStateText(task)} alwaysShowInlineLabel>
+                      {dueDateText || "-"}
+                    </MobileValue>
+                    {renderMobileMetaPaddingSlots(overviewMetaPaddingCount, `overview-meta-padding-${task.id}`)}
+                  </div>
+                    </MobileDescriptionPanel>
+                  </>
+                )}
+                {hasDependencyDetails && (
+              <MobileDescriptionPanel title="Dependencies">
+                <MobileDependencyRelations
+                  predecessorTargets={predecessorTargets}
+                  successorTargets={successorTargets}
+                  onShowTask={onShowTask}
+                />
+              </MobileDescriptionPanel>
+            )}
+            {hasDescription && (
+              <MobileDescriptionPanel title="Description">
+                <DescriptionBlock text={task.beschreibung} />
+              </MobileDescriptionPanel>
+            )}
+            {hasSubtasks && (
+              <MobileDescriptionPanel title="Subtasks">
+                <SubtaskList subtasks={task.subtasks} />
+              </MobileDescriptionPanel>
+            )}
+                {hasComments && (
+                  <MobileDescriptionPanel title="Comments">
+                    <CommentList comments={task.comments} />
                   </MobileDescriptionPanel>
-                </>
-              )}
-              {hasDependencyDetails && (
-            <MobileDescriptionPanel title="Dependencies">
-              <MobileDependencyRelations
-                predecessorTargets={predecessorTargets}
-                successorTargets={successorTargets}
-                onShowTask={onShowTask}
-              />
-            </MobileDescriptionPanel>
-          )}
-          {hasDescription && (
-            <MobileDescriptionPanel title="Description">
-              <DescriptionBlock text={task.beschreibung} />
-            </MobileDescriptionPanel>
-          )}
-          {hasSubtasks && (
-            <MobileDescriptionPanel title="Subtasks">
-              <SubtaskList subtasks={task.subtasks} />
-            </MobileDescriptionPanel>
-          )}
-              {hasComments && (
-                <MobileDescriptionPanel title="Comments">
-                  <CommentList comments={task.comments} />
-                </MobileDescriptionPanel>
-              )}
-            </>
-          )}
-        </details>
+                )}
+              </>
+            )}
+          </details>
+        )
       )}
 
       <dl className="mobileDetails">
