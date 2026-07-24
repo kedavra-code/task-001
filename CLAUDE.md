@@ -24,7 +24,7 @@ Stack: React 19, TypeScript 6, Vite 8, Supabase (auth + storage), Google OAuth, 
 ## Repository & Deployment
 
 - GitHub: `git@github.com:kedavra-code/task-001.git`
-- Production: Vercel, auto-deploys on push to `main`. Current URL: `https://task-001-sepia.vercel.app/`
+- Production: Vercel, auto-deploys on push to `main`. Current URL: `https://task-001.pixelina.me/` (custom domain added 2026-07-24, replacing `task-001-sepia.vercel.app` as the canonical URL; the old vercel.app URL still resolves via Vercel's domain redirect).
 - `vercel.json` sets `Cache-Control: no-store` for the deployed app so stale UI builds shouldn't remain visible after a deployment. If a pushed change looks invisible in the browser, verify the Vercel deployment's Git commit before making further UI changes.
 - Google access is gated through Supabase `allowed_users`. `miro@pixelina.me` is the admin and can add/remove allowed Google users inside the app under `...` -> `Users`. Each allowed user has a separate task list and separate synced settings via `user_id`; this is not shared-workspace collaboration.
 
