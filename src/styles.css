@@ -125,7 +125,6 @@ button {
 }
 
 .topbarActions,
-.rowActions,
 .toolbarFilters {
   display: flex;
   align-items: center;
@@ -842,8 +841,7 @@ main {
 [data-theme="dark"] .reviewTaskList li {
   border-top-color: #3a4654;
 }
-.taskForm,
-.tableWrap {
+.taskForm {
   border: 1px solid #dce1e7;
   border-radius: 8px;
   background: #ffffff;
@@ -1171,20 +1169,6 @@ input:read-only {
   background: #eef4ff;
 }
 
-.stackedControls {
-  display: grid;
-  gap: 6px;
-  width: max-content;
-  min-width: 120px;
-  max-width: 180px;
-}
-
-.stackedControls select {
-  width: auto;
-  min-width: 120px;
-  max-width: 180px;
-}
-
 .primaryButton,
 .secondaryButton,
 .iconButton {
@@ -1269,7 +1253,6 @@ input:read-only {
   background: #f8fbff;
 }
 
-.inlineEditSaveBar,
 .mobileInlineSaveBar {
   display: inline-flex;
   align-items: center;
@@ -1281,7 +1264,6 @@ input:read-only {
   box-shadow: 0 8px 22px rgba(23, 32, 42, 0.08);
 }
 
-.inlineEditSaveBar span,
 .mobileInlineSaveBar span {
   color: #61707f;
   font-size: 12px;
@@ -1453,16 +1435,7 @@ input:read-only {
   min-height: 30px;
 }
 
-.tableWrap {
-  max-height: clamp(340px, calc(100vh - 245px), 780px);
-  overflow: auto;
-}
-
 .mobileTaskList {
-  display: none;
-}
-
-.tableWrap.isCompactHidden {
   display: none;
 }
 
@@ -2003,9 +1976,7 @@ input:read-only {
   border-top: 2px solid #cfd7df;
 }
 
-.taskEditSection summary,
-.tableEditSection summary,
-.tableEditParameterLabel {
+.taskEditSection summary {
   margin: 0;
   color: #3a434d;
   font-size: 12px;
@@ -2052,36 +2023,11 @@ input:read-only {
   width: 100%;
 }
 
-.taskEditSectionComments .commentEditor,
-.tableEditSectionComments .commentEditor {
+.taskEditSectionComments .commentEditor {
   margin-top: 0;
 }
 
-.tableEditSection {
-  display: grid;
-  gap: 6px;
-  padding-top: 7px;
-  border-top: 2px solid #12816f;
-}
-
-.tableEditSection + .tableEditSection {
-  margin-top: 10px;
-}
-
-.tableEditSectionComments {
-  border-top-color: #b7791f;
-}
-
-.subtaskCell .tableEditSection {
-  border-top-color: #287a45;
-}
-
-.tableEditParameterLabel {
-  color: #1f6feb;
-}
-
-.taskEditSection summary,
-.tableEditSection summary {
+.taskEditSection summary {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -2090,25 +2036,21 @@ input:read-only {
   user-select: none;
 }
 
-.taskEditSection summary::-webkit-details-marker,
-.tableEditSection summary::-webkit-details-marker {
+.taskEditSection summary::-webkit-details-marker {
   display: none;
 }
 
-.taskEditSection summary::before,
-.tableEditSection summary::before {
+.taskEditSection summary::before {
   content: "▾";
   color: #61707f;
   font-size: 12px;
 }
 
-.taskEditSection:not([open]) summary::before,
-.tableEditSection:not([open]) summary::before {
+.taskEditSection:not([open]) summary::before {
   content: "▸";
 }
 
-.taskEditSection:not([open]),
-.tableEditSection:not([open]) {
+.taskEditSection:not([open]) {
   padding-bottom: 4px;
 }
 
@@ -2304,65 +2246,6 @@ input:read-only {
   }
 }
 
-table {
-  width: 100%;
-  min-width: 1500px;
-  border-collapse: collapse;
-}
-
-th,
-td {
-  border-bottom: 1px solid #e7ebef;
-  padding: 10px;
-  text-align: left;
-  vertical-align: top;
-}
-
-th {
-  position: sticky;
-  top: 0;
-  z-index: 1;
-  background: #f8fafc;
-  color: #61707f;
-  font-size: 12px;
-  text-transform: uppercase;
-}
-
-.helpLabel {
-  cursor: help;
-  border-bottom: 1px dotted #61707f;
-}
-
-.filterRow th {
-  position: sticky;
-  top: 39px;
-  background: #ffffff;
-  text-transform: none;
-}
-
-.filterRow th:has(.sortToggle) {
-  min-height: 44px;
-  padding-right: 44px;
-}
-
-.filterRow input,
-.filterRow select {
-  min-width: 110px;
-  padding: 7px 8px;
-  font-size: 13px;
-}
-
-.filterRow th:has(.sortToggle) > input,
-.filterRow th:has(.sortToggle) > select,
-.filterRow th:has(.sortToggle) > .comboBox {
-  width: 100%;
-  min-width: 82px;
-}
-
-.filterRow .sortToggle + select {
-  margin-top: 6px;
-}
-
 .sortToggle {
   display: inline-flex;
   align-items: center;
@@ -2377,12 +2260,6 @@ th {
   padding: 0;
 }
 
-.filterRow .sortToggle {
-  position: absolute;
-  top: 10px;
-  right: 8px;
-}
-
 .sortToggle.active {
   border-color: #1f6feb;
   background: #eef4ff;
@@ -2391,102 +2268,6 @@ th {
 
 .sortToggle:hover {
   border-color: #9aa8b6;
-}
-
-.filterRow .comboBox {
-  min-width: 110px;
-}
-
-td {
-  font-size: 14px;
-}
-
-.editableTableCell {
-  cursor: text;
-}
-
-.editableTableCell:hover {
-  background: #f7fbff;
-  box-shadow: inset 0 0 0 1px #cfe0ff;
-}
-
-.hoverEditField {
-  display: inline-grid;
-  align-items: center;
-  min-width: 120px;
-}
-
-.hoverEditDisplay,
-.hoverEditControl {
-  grid-area: 1 / 1;
-}
-
-.hoverEditDisplay {
-  display: inline-flex;
-  align-items: center;
-  min-height: 34px;
-}
-
-.hoverEditControl {
-  min-width: 120px;
-  opacity: 0;
-  pointer-events: none;
-}
-
-.hoverEditField:hover .hoverEditDisplay,
-.hoverEditField:focus-within .hoverEditDisplay {
-  opacity: 0;
-  pointer-events: none;
-}
-
-.hoverEditField:hover .hoverEditControl,
-.hoverEditField:focus-within .hoverEditControl {
-  opacity: 1;
-  pointer-events: auto;
-}
-
-tr[data-edit-surface="true"] input,
-tr[data-edit-surface="true"] textarea,
-tr[data-edit-surface="true"] select {
-  width: auto;
-  min-width: 110px;
-  max-width: 180px;
-}
-
-tr[data-edit-surface="true"] textarea[data-edit-field="task"] {
-  width: min(760px, calc(100vw - 260px));
-  min-width: min(520px, 100%);
-  max-width: 100%;
-  min-height: 56px;
-  max-height: 92px;
-  resize: none;
-  overflow-y: auto;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
-
-tr[data-edit-surface="true"] input[type="date"] {
-  min-width: 138px;
-  max-width: 150px;
-}
-
-tr[data-edit-surface="true"] .comboBox {
-  width: 160px;
-  min-width: 0;
-}
-
-tr[data-edit-surface="true"] .comboBox input {
-  width: 100%;
-  min-width: 0;
-  max-width: none;
-}
-
-.hoverDateField {
-  min-width: 150px;
-}
-
-.hoverDateField .hoverEditControl {
-  min-width: 150px;
 }
 
 .doneRow {
@@ -2501,24 +2282,6 @@ tr[data-edit-surface="true"] .comboBox input {
 .highlightRow {
   outline: 2px solid #1f6feb;
   outline-offset: -2px;
-}
-
-.highlightRow td {
-  background: #eef4ff;
-}
-
-.doneRow .taskCell {
-  text-decoration: line-through;
-}
-
-.deletedRow .taskCell {
-  text-decoration: line-through;
-}
-
-.taskIdCell {
-  color: #3a434d;
-  font-weight: 800;
-  white-space: nowrap;
 }
 
 .taskIdButton {
@@ -2561,42 +2324,6 @@ tr[data-edit-surface="true"] .comboBox input {
 
 .taskRelationButton {
   cursor: pointer;
-}
-
-.taskCell {
-  min-width: 420px;
-  font-weight: 700;
-}
-
-tr[data-edit-surface="true"] .taskCell {
-  min-width: min(760px, calc(100vw - 260px));
-}
-
-.tableTaskTitleInput {
-  width: min(760px, calc(100vw - 260px));
-  min-width: min(520px, 100%);
-  max-width: 100%;
-  min-height: 56px;
-  max-height: 92px;
-  resize: none;
-  overflow-y: auto;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
-
-.descriptionCell {
-  min-width: 220px;
-  max-width: 300px;
-}
-
-.subtaskCell {
-  min-width: 230px;
-  max-width: 320px;
-}
-
-.tagCell {
-  min-width: 180px;
-  max-width: 240px;
 }
 
 .tagField {
@@ -2792,11 +2519,6 @@ tr[data-edit-surface="true"] .taskCell {
   color: #7a8794;
   font-size: 12px;
   font-weight: 700;
-}
-
-.dependencyCell {
-  min-width: 150px;
-  max-width: 240px;
 }
 
 .relationPicker {
@@ -3200,11 +2922,6 @@ tr[data-edit-surface="true"] .taskCell {
 
 .mobileDescriptionBlock .subtaskReadBlock {
   margin-top: 8px;
-}
-
-.descriptionWithComments {
-  display: grid;
-  gap: 8px;
 }
 
 .commentEditor {
@@ -3937,14 +3654,6 @@ tr[data-edit-surface="true"] .taskCell {
     width: 100%;
   }
 
-  .tableWrap:not(.isEditingOnMobile) {
-    display: none;
-  }
-
-  .tableWrap.isEditingOnMobile {
-    display: none;
-  }
-
   .toolbar {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -4301,7 +4010,6 @@ tr[data-edit-surface="true"] .taskCell {
 [data-theme="dark"] .actionsMenu,
 [data-theme="dark"] .userDocModal,
 .taskForm,
-[data-theme="dark"] .tableWrap,
 [data-theme="dark"] .mobileTaskCard,
 [data-theme="dark"] .overviewSearchBox,
 [data-theme="dark"] .dependencyPickerPopup,
@@ -4541,7 +4249,6 @@ tr[data-edit-surface="true"] .taskCell {
 [data-theme="dark"] .commentItem small,
 [data-theme="dark"] .commentReadList small,
 [data-theme="dark"] .taskEditSection summary::before,
-[data-theme="dark"] .tableEditSection summary::before,
 [data-theme="dark"] .mobileBadgeSection summary::before,
 [data-theme="dark"] .mobileDetailsDisclosure summary::before {
   color: #a8b3bf;
@@ -4550,9 +4257,7 @@ tr[data-edit-surface="true"] .taskCell {
 [data-theme="dark"] .menuGroupTitle,
 [data-theme="dark"] .sectionDefaultsLabel,
 [data-theme="dark"] .taskEditSection summary,
-[data-theme="dark"] .tableEditSection summary,
 [data-theme="dark"] .mobileBadgeSection summary,
-[data-theme="dark"] .tableEditParameterLabel,
 [data-theme="dark"] .mobileTaskHeader h2,
 [data-theme="dark"] .commentHeader,
 [data-theme="dark"] label > span,
@@ -4569,24 +4274,10 @@ tr[data-edit-surface="true"] .taskCell {
   color: #e6edf3;
 }
 
-[data-theme="dark"] table,
-[data-theme="dark"] th,
-[data-theme="dark"] td {
-  border-color: #394653;
-  color: #e6edf3;
-}
-
-[data-theme="dark"] thead th,
-[data-theme="dark"] .filterRow th {
-  background: #202a34;
-}
-
-[data-theme="dark"] tbody tr,
 [data-theme="dark"] .browserCompactTaskList .mobileTaskCard {
   background: #182029;
 }
 
-[data-theme="dark"] tbody tr:hover,
 [data-theme="dark"] .browserCompactTaskList .mobileTaskCard:hover {
   background: #202a34;
 }
@@ -5271,9 +4962,7 @@ textarea::-webkit-resizer {
 .captureTaskField textarea,
 .mobileTaskCard.mobileEditCard > textarea.mobileTaskTitleInput,
 .browserCompactTaskList .mobileTaskCard.mobileEditCard > textarea.mobileTaskTitleInput,
-.singleTaskEditList .mobileTaskCard.mobileEditCard > textarea.mobileTaskTitleInput,
-textarea.tableTaskTitleInput,
-textarea[data-edit-field="task"] {
+.singleTaskEditList .mobileTaskCard.mobileEditCard > textarea.mobileTaskTitleInput {
   box-sizing: border-box;
   width: min(860px, 100%) !important;
   min-height: 56px !important;

@@ -42,7 +42,6 @@ import {
 const STORAGE_KEY = "task-sheet.tasks.v1";
 const SELECTED_TAG_TABS_STORAGE_KEY = "task-001.selected-tag-tabs.v1";
 const TAG_CATALOG_STORAGE_KEY = "task-001.tag-catalog.v1";
-const BROWSER_COMPACT_VIEW_STORAGE_KEY = "task-001.browser-compact-view.v1";
 const TOOLTIP_ENABLED_STORAGE_KEY = "task-001.tooltips-enabled.v1";
 const DARK_MODE_STORAGE_KEY = "task-001.dark-mode.v1";
 const DARK_MODE_BROWSER_STORAGE_KEY = "task-001.dark-mode-browser.v1";
@@ -1557,7 +1556,7 @@ async function saveRemoteTasks(tasks, userId) {
 async function loadRemoteUserSettings(userId) {
   const { data, error } = await supabase
     .from("user_settings")
-    .select("selected_tag_tabs, available_tags, browser_compact_view, tooltips_enabled")
+    .select("selected_tag_tabs, available_tags, tooltips_enabled")
     .eq("user_id", userId)
     .maybeSingle();
 
@@ -1574,7 +1573,6 @@ async function loadRemoteUserSettings(userId) {
       return {
         selectedTagTabs: normalizeTags(legacyData?.selected_tag_tabs, 0),
         tagCatalog: normalizeTagCatalog(legacyData?.available_tags),
-        browserCompactView: null,
         tooltipsEnabled: null,
         darkModeSettings: null,
         editSectionDefaults: null,
@@ -1669,7 +1667,6 @@ async function loadRemoteUserSettings(userId) {
   return {
     selectedTagTabs: normalizeTags(data?.selected_tag_tabs, 0),
     tagCatalog: normalizeTagCatalog(data?.available_tags),
-    browserCompactView: data?.browser_compact_view ?? null,
     tooltipsEnabled: data?.tooltips_enabled ?? null,
     darkModeSettings: legacyDarkMode === null && browserDarkMode === null && mobileDarkMode === null
       ? null
@@ -1710,7 +1707,6 @@ async function loadOptionalUserSettingBoolean(userId, columnName) {
 
 function isMissingUserSettingsColumnError(message) {
   return [
-    "browser_compact_view",
     "tooltips_enabled",
   ].some(columnName => message.includes(columnName));
 }
@@ -1725,7 +1721,7 @@ async function updateOptionalUserSettingColumns(userId, values, missingColumnNam
   if (!missingColumnNames.some(columnName => message.includes(columnName))) throw error;
 }
 
-async function saveRemoteUserSettings(userId, selectedTagTabs, tagCatalog, browserCompactView, tooltipsEnabled, darkModeSettings, editSectionDefaults, tabLayout, cardBadgeColumns, defaultViewModes, defaultStartTabs, kanbanColumnKeys, upcomingBadgeDefaults) {
+async function saveRemoteUserSettings(userId, selectedTagTabs, tagCatalog, tooltipsEnabled, darkModeSettings, editSectionDefaults, tabLayout, cardBadgeColumns, defaultViewModes, defaultStartTabs, kanbanColumnKeys, upcomingBadgeDefaults) {
   const normalizedDarkModeSettings = normalizeDarkModeSettings(darkModeSettings);
   const { error } = await supabase
     .from("user_settings")
@@ -1733,7 +1729,6 @@ async function saveRemoteUserSettings(userId, selectedTagTabs, tagCatalog, brows
       user_id: userId,
       selected_tag_tabs: normalizeTags(selectedTagTabs, 0),
       available_tags: normalizeTagCatalog(tagCatalog),
-      browser_compact_view: Boolean(browserCompactView),
       tooltips_enabled: Boolean(tooltipsEnabled),
     });
 
@@ -1831,15 +1826,6 @@ async function removeAllowedUserEmail(email) {
     .eq("email", normalizedEmail);
 
   if (error) throw error;
-}
-
-function loadBrowserCompactView() {
-  try {
-    const saved = localStorage.getItem(BROWSER_COMPACT_VIEW_STORAGE_KEY);
-    return saved === null ? true : saved === "true";
-  } catch {
-    return true;
-  }
 }
 
 function loadTooltipsEnabled() {
@@ -2071,14 +2057,6 @@ function saveTagCatalog(tags) {
 
 function saveLocalTasks(tasks) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(pruneExpiredDeletedTasks(tasks)));
-}
-
-function saveBrowserCompactView(isCompact) {
-  try {
-    localStorage.setItem(BROWSER_COMPACT_VIEW_STORAGE_KEY, isCompact ? "true" : "false");
-  } catch {
-    // Local UI preference only.
-  }
 }
 
 function saveTooltipsEnabled(isEnabled) {
@@ -3008,7 +2986,6 @@ function csvToTasks(text) {
 
 export default function App() {
   const [tasks, setTasks] = useState(loadLocalTasks);
-  const [isBrowserCompactView, setIsBrowserCompactView] = useState(loadBrowserCompactView);
   const hadDefaultViewModePreferenceOnStartRef = useRef(hasDefaultViewModePreference());
   const initialIsMobileViewport = isMobileViewportNow();
   const [defaultViewModes, setDefaultViewModes] = useState(loadDefaultViewModes);
@@ -3187,10 +3164,6 @@ export default function App() {
 
 
   useEffect(() => {
-    saveBrowserCompactView(isBrowserCompactView);
-  }, [isBrowserCompactView]);
-
-  useEffect(() => {
     saveDefaultViewModes(defaultViewModes);
     if (!hasSessionViewSnapshotOnStartRef.current) {
       setIsKanbanView((isMobileViewport ? defaultViewModes.mobile : defaultViewModes.browser) === "kanban");
@@ -3259,7 +3232,6 @@ export default function App() {
         session.user.id,
         selectedTagTabs,
         tagCatalog,
-        isBrowserCompactView,
         areTooltipsEnabled,
         darkModeSettings,
         editSectionDefaults,
@@ -3275,7 +3247,7 @@ export default function App() {
     }, 400);
 
     return () => window.clearTimeout(syncSettingsTimeout);
-  }, [selectedTagTabs, tagCatalog, visibleTabLayout, activeSelectedTagTabs, isBrowserCompactView, areTooltipsEnabled, darkModeSettings, editSectionDefaults, cardBadgeColumns, defaultViewModes, defaultStartTabs, kanbanColumnKeys, upcomingBadgeDefaults, isSettingsLoaded, session, isCurrentUserAllowed]);
+  }, [selectedTagTabs, tagCatalog, visibleTabLayout, activeSelectedTagTabs, areTooltipsEnabled, darkModeSettings, editSectionDefaults, cardBadgeColumns, defaultViewModes, defaultStartTabs, kanbanColumnKeys, upcomingBadgeDefaults, isSettingsLoaded, session, isCurrentUserAllowed]);
 
   useEffect(() => {
     if (!isLoaded || !isCurrentUserAllowed) return;
@@ -3415,10 +3387,6 @@ export default function App() {
           // must not silently overwrite real local customization - see preferLocalWhenRemoteIsDefault.
           setSelectedTagTabs(current => preferLocalWhenRemoteIsDefault(remoteSettings.selectedTagTabs, [], current));
           setTagCatalog(current => preferLocalWhenRemoteIsDefault(remoteSettings.tagCatalog, [], current));
-          if (remoteSettings.browserCompactView !== null) {
-            setIsBrowserCompactView(current =>
-              preferLocalWhenRemoteIsDefault(Boolean(remoteSettings.browserCompactView), true, current));
-          }
           if (remoteSettings.tooltipsEnabled !== null) {
             setAreTooltipsEnabled(current =>
               preferLocalWhenRemoteIsDefault(Boolean(remoteSettings.tooltipsEnabled), true, current));
@@ -5031,14 +4999,6 @@ export default function App() {
       </button>
       <div className="actionMenuRow settingsRow">
         <span className="menuGroupTitle">View</span>
-        <label className="menuCheckbox" title="Switches the browser between compact cards and the wide table view.">
-          <input
-            type="checkbox"
-            checked={isBrowserCompactView}
-            onChange={event => setIsBrowserCompactView(event.target.checked)}
-          />
-          <span>Compact browser</span>
-        </label>
         <label className="menuSetting defaultViewModeSetting" title="Sets whether task overviews open as list or Kanban by default in the browser. This setting is persistent.">
           <span>Default view browser</span>
           <select
@@ -5790,197 +5750,7 @@ export default function App() {
 
         {isListTab(activeAppTab) && (
           <>
-            <section className={`tableWrap ${isBrowserCompactView || isKanbanView || isSingleTaskEditMode ? "isCompactHidden" : ""} ${editingId ? "isEditingOnMobile" : ""}`}>
-          <table>
-            <thead>
-              <tr>
-                <th>Done</th>
-                <th>ID</th>
-                <th>
-                  <span className="helpLabel" title={PRIO_HELP}>Prio</span>
-                </th>
-                <th>Tag</th>
-                <th>Task</th>
-                <th>Description</th>
-                <th>Subtasks</th>
-                <th>Predecessors</th>
-                <th>Successors</th>
-                <th>Status</th>
-                <th>Start date</th>
-                <th>Due</th>
-                {showCompletedAtColumn && <th>Done on</th>}
-                {showDeletedAtColumn && <th>Deleted on</th>}
-                <th></th>
-              </tr>
-              <tr className="filterRow">
-                <th></th>
-                <th>
-                  <ComboInput
-                    value={columnFilters.taskCode}
-                    options={taskCodeOptions}
-                    onChange={value => updateColumnFilter("taskCode", value)}
-                    placeholder="ID"
-                    ariaLabel="Select ID"
-                  />
-                  <SortToggle value={columnFilters.taskCodeSort} onChange={value => updateColumnFilter("taskCodeSort", value)} ariaLabel="Sort ID" />
-                </th>
-                <th>
-                  <select
-                    value={columnFilters.prio}
-                    onChange={event => updateColumnFilter("prio", event.target.value)}
-                  >
-                    <option value="Alle">All</option>
-                    {PRIO_OPTIONS.map(option => (
-                      <option key={option} value={option}>{getDisplayValue(option)}</option>
-                    ))}
-                  </select>
-                  <SortToggle value={columnFilters.prioSort} onChange={value => updateColumnFilter("prioSort", value)} ariaLabel="Sort Prio" />
-                </th>
-                <th>
-                  <select
-                    value={columnFilters.tagFilter}
-                    onChange={event => updateColumnFilter("tagFilter", event.target.value)}
-                    aria-label="Tag"
-                  >
-                    <option value="">All</option>
-                    <option value="-">No tag</option>
-                    {tagOptions.map(option => (
-                      <option key={option} value={option}>{getDisplayValue(option)}</option>
-                    ))}
-                  </select>
-                  <SortToggle value={columnFilters.tagSort} onChange={value => updateColumnFilter("tagSort", value)} ariaLabel="Sort tag" />
-                </th>
-                <th>
-                  <input
-                    value={columnFilters.task}
-                    onChange={event => updateColumnFilter("task", event.target.value)}
-                    placeholder="All"
-                  />
-                  <SortToggle value={columnFilters.taskSort} onChange={value => updateColumnFilter("taskSort", value)} ariaLabel="Sort task" />
-                </th>
-                <th>
-                  <input
-                    value={columnFilters.beschreibung}
-                    onChange={event => updateColumnFilter("beschreibung", event.target.value)}
-                    placeholder="All"
-                  />
-                  <SortToggle value={columnFilters.beschreibungSort} onChange={value => updateColumnFilter("beschreibungSort", value)} ariaLabel="Sort description" />
-                </th>
-                <th>
-                  <input
-                    value={columnFilters.subtaskFilter}
-                    onChange={event => updateColumnFilter("subtaskFilter", event.target.value)}
-                    placeholder="All"
-                  />
-                  <SortToggle value={columnFilters.subtaskSort} onChange={value => updateColumnFilter("subtaskSort", value)} ariaLabel="Sort subtasks" />
-                </th>
-                <th>
-                  <input
-                    value={columnFilters.predecessorFilter}
-                    onChange={event => updateColumnFilter("predecessorFilter", event.target.value)}
-                    placeholder="All"
-                  />
-                  <SortToggle value={columnFilters.predecessorSort} onChange={value => updateColumnFilter("predecessorSort", value)} ariaLabel="Sort predecessors" />
-                </th>
-                <th>
-                  <input
-                    value={columnFilters.successorFilter}
-                    onChange={event => updateColumnFilter("successorFilter", event.target.value)}
-                    placeholder="All"
-                  />
-                  <SortToggle value={columnFilters.successorSort} onChange={value => updateColumnFilter("successorSort", value)} ariaLabel="Sort successors" />
-                </th>
-                <th>
-                  <SortToggle value={columnFilters.googleStatusSort} onChange={value => updateColumnFilter("googleStatusSort", value)} ariaLabel="Sort status" />
-                </th>
-                <th>
-                  <input
-                    value={columnFilters.startdatum}
-                    onChange={event => updateColumnFilter("startdatum", event.target.value)}
-                    placeholder="All"
-                  />
-                  <SortToggle value={columnFilters.startdatumSort} onChange={value => updateColumnFilter("startdatumSort", value)} ariaLabel="Sort start date" />
-                </th>
-                <th>
-                  <input
-                    value={columnFilters.faellig}
-                    onChange={event => updateColumnFilter("faellig", event.target.value)}
-                    placeholder="All"
-                  />
-                  <select
-                    value={columnFilters.dueStatus}
-                    onChange={event => updateColumnFilter("dueStatus", event.target.value)}
-                    aria-label="Due state"
-                  >
-                    {DUE_STATUS_OPTIONS.map(option => (
-                      <option key={option} value={option}>{getDisplayValue(option)}</option>
-                    ))}
-                  </select>
-                  <SortToggle value={columnFilters.faelligSort} onChange={value => updateColumnFilter("faelligSort", value)} ariaLabel="Sort due" />
-                </th>
-                {showCompletedAtColumn && (
-                  <th>
-                    <input
-                      value={columnFilters.completedAt}
-                      onChange={event => updateColumnFilter("completedAt", event.target.value)}
-                      placeholder="All"
-                    />
-                    <SortToggle value={columnFilters.completedAtSort} onChange={value => updateColumnFilter("completedAtSort", value)} ariaLabel="Sort done date" />
-                  </th>
-                )}
-                {showDeletedAtColumn && (
-                  <th>
-                    <input
-                      value={columnFilters.deletedAt}
-                      onChange={event => updateColumnFilter("deletedAt", event.target.value)}
-                      placeholder="All"
-                    />
-                    <SortToggle value={columnFilters.deletedAtSort} onChange={value => updateColumnFilter("deletedAtSort", value)} ariaLabel="Sort deleted date" />
-                  </th>
-                )}
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {visibleTasksWithEditingTask.map(task => (
-                <TaskRow
-                  key={task.id}
-                  task={task}
-                  highlightedTaskId={highlightedTaskId}
-                  isEditing={editingId === task.id}
-                  hasUnsavedChanges={editingId === task.id && hasAnyUnsavedEditChanges}
-                  getTooltip={(field, value) => getTooltipForTask(editingId === task.id ? editDraft : task, field, value)}
-                  dueReminderTooltip={getDueReminderTooltip(editingId === task.id && editDraft ? editDraft : task)}
-                  editDraft={editDraft}
-                  editFocusField={editingId === task.id ? editFocusField : ""}
-                  editSectionDefaults={activeEditSectionDefaults}
-                  onStartEdit={startEdit}
-                  onCancelEdit={cancelEditWithPrompt}
-                  onSaveEdit={saveEdit}
-                  onSaveEditField={saveEditField}
-                  onLocalEditDraftChange={updateLocalEditDraft}
-                  onRequestEditExit={requestEditExit}
-                  onDelete={deleteTask}
-                  onRestore={restoreTask}
-                  onToggleDone={toggleDone}
-                  onShareTask={shareTask}
-                  onQuickChange={updateTaskField}
-                  predecessorTargets={getRelationTargets(getPredecessorIds(task), tasksById, "Predecessors")}
-                  successorTargets={getRelationTargets(childIdsByParent.get(task.id) || [], tasksById, "Successors")}
-                  dependencyOptions={getTaskOptions(tasks, task.id)}
-                  tagOptions={tagOptions}
-                  onShowTask={showTask}
-                  onChange={updateEditDraft}
-                  showCompletedAt={showCompletedAtColumn}
-                  showDeletedAt={showDeletedAtColumn}
-                />
-              ))}
-            </tbody>
-            </table>
-            {visibleTasksWithEditingTask.length === 0 && <div className="emptyState">No tasks found.</div>}
-          </section>
-
-          <section className={`mobileTaskList ${isBrowserCompactView ? "browserCompactTaskList" : ""} ${isKanbanView && !isSingleTaskEditMode ? "isKanbanHidden" : ""} ${isSingleTaskEditMode ? "singleTaskEditList" : ""}`} aria-label="Tasks">
+          <section className={`mobileTaskList browserCompactTaskList ${isKanbanView && !isSingleTaskEditMode ? "isKanbanHidden" : ""} ${isSingleTaskEditMode ? "singleTaskEditList" : ""}`} aria-label="Tasks">
             {taskCardsToRender.map(task => (
               <MobileTaskCard
                 key={task.id}
@@ -7348,435 +7118,6 @@ function RelationTargetPicker({ targets, emptyLabel = "None", onShowTask }) {
           ))}
         </div>
       )}
-    </span>
-  );
-}
-
-function TaskRow({
-  task,
-  dragProps = {},
-  highlightedTaskId,
-  isEditing,
-  hasUnsavedChanges,
-  editDraft,
-  editFocusField,
-  editSectionDefaults,
-  onStartEdit,
-  onCancelEdit,
-  onSaveEdit,
-  onSaveEditField,
-  onLocalEditDraftChange,
-  onRequestEditExit,
-  onDelete,
-  onRestore,
-  onToggleDone,
-  onShareTask,
-  onQuickChange,
-  predecessorTargets,
-  successorTargets,
-  dependencyOptions,
-  tagOptions,
-  onShowTask,
-  onChange,
-  getTooltip = getEditTooltip,
-  dueReminderTooltip = "",
-  showCompletedAt,
-  showDeletedAt
-}) {
-  const data = isEditing ? editDraft : task;
-  const done = isDone(task);
-  const deleted = isDeleted(task);
-  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
-  const rowRef = useRef(null);
-  const deleteConfirmRef = useRef(null);
-  const deleteToggleRef = useRef(null);
-  const lastFocusedFieldRef = useRef("");
-  const rowClassName = [done ? "doneRow" : "", deleted ? "deletedRow" : "", highlightedTaskId === task.id ? "highlightRow" : ""]
-    .filter(Boolean)
-    .join(" ");
-
-  useEffect(() => {
-    if (!isDeleteConfirmOpen) return undefined;
-
-    function closeOnOutsidePointer(event) {
-      if (
-        deleteConfirmRef.current?.contains(event.target) ||
-        deleteToggleRef.current?.contains(event.target)
-      ) return;
-      setIsDeleteConfirmOpen(false);
-    }
-
-    function closeOnScroll() {
-      setIsDeleteConfirmOpen(false);
-    }
-
-    document.addEventListener("pointerdown", closeOnOutsidePointer);
-    window.addEventListener("scroll", closeOnScroll, { passive: true });
-    return () => {
-      document.removeEventListener("pointerdown", closeOnOutsidePointer);
-      window.removeEventListener("scroll", closeOnScroll);
-    };
-  }, [isDeleteConfirmOpen]);
-
-  useEffect(() => {
-    if (!isDeleteConfirmOpen) return undefined;
-    const frame = window.requestAnimationFrame(() => ensureElementVisible(deleteConfirmRef.current, null, 12));
-    return () => window.cancelAnimationFrame(frame);
-  }, [isDeleteConfirmOpen]);
-
-  useEffect(() => {
-    if (!isEditing) {
-      lastFocusedFieldRef.current = "";
-      return;
-    }
-    if (!editFocusField || lastFocusedFieldRef.current === editFocusField) return;
-    lastFocusedFieldRef.current = editFocusField;
-    window.requestAnimationFrame(() => {
-      const field = rowRef.current?.querySelector(`[data-edit-field="${editFocusField}"]`);
-      const target = field?.matches("input, select, textarea, button, [role='button']")
-        ? field
-        : field?.querySelector("input, select, textarea, button, [role='button']");
-      target?.focus();
-      if (target?.tagName === "INPUT" && target.type !== "date") target.select();
-      if (field?.dataset.autoOpen === "true") {
-        target?.click();
-        return;
-      }
-      if ((target?.tagName === "SELECT" || target?.type === "date") && typeof target.showPicker === "function") {
-        try {
-          target.showPicker();
-        } catch {
-          // Some browsers only allow showPicker during the original pointer event.
-        }
-      }
-    });
-  }, [isEditing, editFocusField]);
-
-  function editCell(field) {
-    if (isEditing) return undefined;
-    return event => {
-      if (event.button !== 0) return;
-      if (event.target.closest("button, a, input, select, textarea, [role='button']")) return;
-      event.preventDefault();
-      onStartEdit(task, field);
-    };
-  }
-
-  return (
-    <tr ref={rowRef} id={`task-row-${task.id}`} className={rowClassName} data-edit-surface={isEditing ? "true" : undefined} {...dragProps}>
-      <td>
-        <button
-          type="button"
-          className={`iconButton statusToggle ${done ? "done" : ""}`}
-          onClick={() => onToggleDone(task.id)}
-          disabled={deleted}
-          title={done ? "Mark open" : "Mark done"}
-        >
-          <Check size={17} />
-        </button>
-      </td>
-      <td className="taskIdCell">
-        {isEditing ? (
-          <span className="taskIdStatic" title="Task ID">{task.taskCode}</span>
-        ) : (
-          <button
-            type="button"
-            className="taskIdButton"
-            onMouseDown={event => {
-              if (event.button !== 0) return;
-              event.preventDefault();
-              onShowTask(task.id);
-            }}
-            title="Show/hide task details"
-          >
-            {task.taskCode}
-          </button>
-        )}
-      </td>
-      <td>
-        {isEditing ? (
-          <div className="stackedControls">
-            <span className="tableEditParameterLabel">Parameter</span>
-            <select value={data.risiko} onChange={event => onChange("risiko", event.target.value)} title={getTooltip("risiko", data.risiko)}>
-              <option value={CRITERIA_PLACEHOLDER} disabled>
-                {CRITERIA_PLACEHOLDER} select
-              </option>
-              {RISIKO_OPTIONS.map(option => (
-                <option key={option} value={option}>{getDisplayValue(option)}</option>
-              ))}
-            </select>
-            <select value={data.impact} onChange={event => onChange("impact", event.target.value)} title={getTooltip("impact", data.impact)}>
-              <option value={CRITERIA_PLACEHOLDER} disabled>
-                {CRITERIA_PLACEHOLDER} select
-              </option>
-              {IMPACT_OPTIONS.map(option => (
-                <option key={option} value={option}>{getDisplayValue(option)}</option>
-              ))}
-            </select>
-            <span className={`prio ${getPrioClass(getEffectivePrio(data.prio))}`} data-prio={getEffectivePrio(data.prio)} title={getTooltip("prio", getEffectivePrio(data.prio))}>{getDisplayValue(getEffectivePrio(data.prio))}</span>
-          </div>
-        ) : (
-          <span className={`prio ${getPrioClass(getEffectivePrio(task.prio))}`} data-prio={getEffectivePrio(task.prio)} title={getTooltip("prio", getEffectivePrio(task.prio))}>
-            {getDisplayValue(getEffectivePrio(task.prio))}
-          </span>
-        )}
-      </td>
-      <td className={`tagCell ${!isEditing ? "editableTableCell" : ""}`} onMouseDown={editCell("tags")}>
-        {isEditing ? (
-          <div data-edit-field="tags" data-auto-open="true" title={getTooltip("tags", normalizeTags(data.tags)[0] || "-")}>
-            <TagEditorField values={data.tags} options={tagOptions} onChange={value => onChange("tags", value)} />
-          </div>
-        ) : (
-          <TagList tags={task.tags} />
-        )}
-      </td>
-      <td className={`taskCell ${!isEditing ? "editableTableCell" : ""}`} onMouseDown={editCell("task")}>
-        {isEditing ? (
-          <>
-            <textarea
-              className="tableTaskTitleInput"
-              data-edit-field="task"
-              value={data.task}
-              onChange={event => onChange("task", event.target.value)}
-              title={getTooltip("task", data.task)}
-              rows={2}
-              maxLength={TEXT_LIMITS.task.max}
-            />
-            <InputGuidance value={data.task} limits={TEXT_LIMITS.task} label="Task name" />
-          </>
-        ) : task.task}
-      </td>
-      <td className={`descriptionCell ${!isEditing ? "editableTableCell" : ""}`} onMouseDown={editCell("beschreibung")}>
-        {isEditing ? (
-          <div data-edit-field="beschreibung" data-auto-open="true" title={getTooltip("beschreibung", data.beschreibung)}>
-            <details key={`${task.id}-description-${editSectionDefaults.description}`} className="tableEditSection" open={editSectionDefaults.description}>
-              <summary>Description</summary>
-              <DescriptionEditor
-                value={data.beschreibung}
-                onSave={value => onSaveEditField("beschreibung", value)}
-                draftKey={`${task.id}:beschreibung`}
-                onLocalDraftChange={onLocalEditDraftChange}
-              />
-            </details>
-            <details key={`${task.id}-comments-${editSectionDefaults.comments}`} className="tableEditSection tableEditSectionComments" open={editSectionDefaults.comments}>
-              <summary>Comments</summary>
-              <CommentEditor
-                value={data.comments}
-                onSave={value => onSaveEditField("comments", value)}
-                draftKey={`${task.id}:comments`}
-                onLocalDraftChange={onLocalEditDraftChange}
-              />
-            </details>
-          </div>
-        ) : (
-          <div className="descriptionWithComments">
-            <DescriptionPreview text={task.beschreibung} />
-            <CommentList comments={task.comments} />
-          </div>
-        )}
-      </td>
-      <td className={`subtaskCell ${!isEditing ? "editableTableCell" : ""}`} onMouseDown={editCell("subtasks")}>
-        {isEditing ? (
-          <details key={`${task.id}-subtasks-${editSectionDefaults.subtasks}`} className="tableEditSection" open={editSectionDefaults.subtasks} data-edit-field="subtasks" data-auto-open="true" title={getTooltip("subtasks", `${normalizeSubtasks(data.subtasks).length} Subtasks`)}>
-            <summary>Subtasks</summary>
-            <SubtaskEditor
-              value={data.subtasks}
-              parentStartDate={data.startdatum}
-              parentDueDate={data.faellig}
-              onSave={value => onSaveEditField("subtasks", value)}
-              draftKey={`${task.id}:subtasks`}
-              onLocalDraftChange={onLocalEditDraftChange}
-            />
-          </details>
-        ) : (
-          <SubtaskList subtasks={task.subtasks} />
-        )}
-      </td>
-      <td className={`dependencyCell ${!isEditing ? "editableTableCell" : ""}`} onMouseDown={editCell("dependsOnTaskIds")}>
-        {isEditing ? (
-          <div data-edit-field="dependsOnTaskIds" data-auto-open="true" title={getTooltip("dependsOnTaskIds", normalizeTaskIds(data.dependsOnTaskIds).length ? `${normalizeTaskIds(data.dependsOnTaskIds).length} selected` : "-")}>
-            <TaskMultiDependencyField
-              label="Predecessors"
-              values={data.dependsOnTaskIds}
-              options={dependencyOptions}
-              onChange={value => onChange("dependsOnTaskIds", value)}
-            />
-          </div>
-        ) : (
-          <RelationTargetPicker targets={predecessorTargets} onShowTask={onShowTask} />
-        )}
-      </td>
-      <td className={`dependencyCell ${!isEditing ? "editableTableCell" : ""}`} onMouseDown={editCell("successorTaskIds")}>
-        {isEditing ? (
-          <div data-edit-field="successorTaskIds" data-auto-open="true" title={getTooltip("successorTaskIds", normalizeTaskIds(data.successorTaskIds).length ? `${normalizeTaskIds(data.successorTaskIds).length} selected` : "-")}>
-            <TaskMultiDependencyField
-              label="Successors"
-              values={data.successorTaskIds}
-              options={dependencyOptions}
-              onChange={value => onChange("successorTaskIds", value)}
-            />
-          </div>
-        ) : (
-          <RelationTargetPicker targets={successorTargets} onShowTask={onShowTask} />
-        )}
-      </td>
-      <td>
-        {isEditing ? (
-          <select data-edit-field="googleStatus" value={getDisplayStatus(data)} onChange={event => onChange("googleStatus", event.target.value)} title={getTooltip("googleStatus", getDisplayStatus(data))}>
-            {TASK_STATUS_OPTIONS.map(option => (
-              <option key={option} value={option}>{getDisplayValue(option)}</option>
-            ))}
-          </select>
-        ) : (
-          <HoverSelectField
-            value={getDisplayStatus(task)}
-            options={TASK_STATUS_OPTIONS}
-            onChange={value => onQuickChange(task.id, "googleStatus", value)}
-            ariaLabel="Change status"
-            display={<span className={`statusBadge ${getStatusClass(getDisplayStatus(task))}`}>{getDisplayValue(getDisplayStatus(task))}</span>}
-          />
-        )}
-      </td>
-      <td className={isTaskOrSubtaskStartAttention(task) ? "overdue" : ""}>
-        {isEditing ? (
-          <input
-            data-edit-field="startdatum"
-            type="date"
-            value={data.startdatum}
-            onChange={event => onChange("startdatum", event.target.value)}
-            title={getTooltip("startdatum", formatDate(data.startdatum) || "-")}
-          />
-        ) : (
-          <HoverDateField
-            value={task.startdatum}
-            display={formatDate(task.startdatum)}
-            onChange={value => onQuickChange(task.id, "startdatum", value)}
-            ariaLabel="Change start date"
-            title={getTooltip("startdatum", `${formatDate(task.startdatum) || "-"}${getStartDateStateText(task) ? ` (${getStartDateStateText(task)})` : ""}`)}
-          />
-        )}
-      </td>
-      <td className={isTaskOrSubtaskDueAttention(task) ? "overdue" : ""}>
-        {isEditing ? (
-          <input data-edit-field="faellig" type="date" value={data.faellig} onChange={event => onChange("faellig", event.target.value)} title={getTooltip("faellig", formatDate(data.faellig) || "-")} />
-        ) : (
-          <HoverDateField
-            value={task.faellig}
-            display={formatDate(task.faellig)}
-            onChange={value => onQuickChange(task.id, "faellig", value)}
-            ariaLabel="Change due"
-            title={getTooltip("faellig", `${formatDate(task.faellig) || "-"}${getDueDateStateText(task) ? ` (${getDueDateStateText(task)})` : ""}`)}
-          />
-        )}
-      </td>
-      {showCompletedAt && <td>{formatDate(task.completedAt) || "-"}</td>}
-      {showDeletedAt && <td>{formatDate(task.deletedAt) || "-"}</td>}
-      <td className="rowActions">
-        {isEditing ? (
-          <div className="inlineEditSaveBar">
-            {dueReminderTooltip && (
-              <span className="iconButton dueReminderEditIcon" title={dueReminderTooltip} aria-label={dueReminderTooltip}>
-                !
-              </span>
-            )}
-            <button
-              type="button"
-              className={`iconButton saveEditButton ${hasUnsavedChanges ? "hasChanges" : ""}`}
-              onClick={() => onSaveEdit({ keepEditing: true })}
-              disabled={!hasUnsavedChanges}
-              title={hasUnsavedChanges ? "Save changes" : "No unsaved changes"}
-            >
-              <DisketteIcon size={17} />
-            </button>
-            <button type="button" className="iconButton" onClick={onCancelEdit} title="Cancel">
-              <X size={17} />
-            </button>
-          </div>
-        ) : (
-          <>
-            {deleted ? (
-              <>
-                <button type="button" className="iconButton" onClick={() => onRestore(task.id)} title="Restore">
-                  <Undo2 size={17} />
-                </button>
-                <button type="button" className="iconButton" onClick={() => onStartEdit(task)} title="Edit">
-                  <Pencil size={17} />
-                </button>
-              </>
-            ) : (
-              <>
-                <button type="button" className="iconButton" onClick={() => onStartEdit(task)} title="Edit">
-                  <Pencil size={17} />
-                </button>
-                <button type="button" className="iconButton" onClick={() => onShareTask(task)} title="Share">
-                  <Share2 size={17} />
-                </button>
-                <button
-                  ref={deleteToggleRef}
-                  type="button"
-                  className="iconButton danger"
-                  onClick={() => setIsDeleteConfirmOpen(current => !current)}
-                  title="Delete"
-                >
-                  <Trash2 size={17} />
-                </button>
-                {isDeleteConfirmOpen && (
-                  <div ref={deleteConfirmRef} className="mobileDoneConfirm taskConfirmDialog" role="group" aria-label="Confirm task delete">
-                    <span>Delete?</span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        onDelete(task.id, { skipConfirm: true });
-                        setIsDeleteConfirmOpen(false);
-                      }}
-                    >
-                      Yes
-                    </button>
-                    <button type="button" onClick={() => setIsDeleteConfirmOpen(false)}>
-                      No
-                    </button>
-                  </div>
-                )}
-              </>
-            )}
-          </>
-        )}
-      </td>
-    </tr>
-  );
-}
-
-function HoverSelectField({ value, options, display, onChange, ariaLabel }) {
-  return (
-    <span className="hoverEditField">
-      <span className="hoverEditDisplay">{display || value}</span>
-      <select
-        className="hoverEditControl"
-        value={value}
-        onChange={event => onChange(event.target.value)}
-        aria-label={ariaLabel}
-      >
-        {options.map(option => (
-          <option key={option} value={option}>{getDisplayValue(option)}</option>
-        ))}
-      </select>
-    </span>
-  );
-}
-
-function HoverDateField({ value, display, max, onChange, ariaLabel, title }) {
-  return (
-    <span className="hoverEditField hoverDateField" title={title}>
-      <span className="hoverEditDisplay">{display || "-"}</span>
-      <input
-        className="hoverEditControl"
-        type="date"
-        value={value || ""}
-        max={max}
-        onChange={event => onChange(event.target.value)}
-        aria-label={ariaLabel}
-        title={title}
-      />
     </span>
   );
 }
