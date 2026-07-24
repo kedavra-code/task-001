@@ -97,7 +97,7 @@ const CARD_BADGE_CELL_GAP = 5;
 const KANBAN_COLUMN_EXTRA_WIDTH = 36;
 const KANBAN_COLUMNS = [
   { key: "clarify", title: "Clarify" },
-  { key: "open", title: "Open" },
+  { key: "open", title: "Backlog" },
   { key: "started", title: "Started" }
 ];
 const DEFAULT_KANBAN_COLUMN_KEYS = KANBAN_COLUMNS.map(column => column.key);
@@ -139,7 +139,7 @@ const TASK_STATUS_OPTIONS = [...GOOGLE_STATUS_OPTIONS, "Gelöscht"];
 const STATUS_FILTER_OPTIONS = ["Alle", "Offen", "Gestartet"];
 const DISPLAY_VALUE_LABELS = {
   "Alle": "All",
-  "Offen": "Open",
+  "Offen": "Backlog",
   "Gestartet": "Started",
   "Erledigt": "Done",
   "Gelöscht": "Deleted",
@@ -177,7 +177,7 @@ function getViewLabel(tab) {
     capture: "New task",
     review: "Review",
     newest: "Newest",
-    open: "Open",
+    open: "Backlog",
     started: "Started",
     done: "Done",
     deleted: "Deleted",
@@ -275,7 +275,7 @@ const EDIT_FIELD_HELP = {
   subtasks: "Internal checklist. All subtasks must be done before the task can be completed.",
   dependsOnTaskIds: "Predecessors: tasks that must be done before this task.",
   successorTaskIds: "Successors: tasks that come after this task.",
-  googleStatus: "Task status: Open, Started, Done, or Deleted.",
+  googleStatus: "Task status: Backlog, Started, Done, or Deleted.",
   startdatum: "Date from which the task should start.",
   faellig: "Task due date."
 };
@@ -6297,7 +6297,7 @@ export default function App() {
                 <ul>
                   <li>The top title resets the session to All without status, due, tag, or column filters. Current view, scope, mode, and search are shown in the info line below the tabs; the filter icon shows the active filter/sort count and lists them on hover. Done and Deleted count as view filters and can be left with Reset filters.</li>
                   <li>All is the primary tab. Tasks that need immediate attention, such as clarification, reached start dates, due-today work, overdue work, and matching subtask reminders, are marked directly on the task with a red exclamation mark and can also be shown as the optional Start reached and Overdue due tabs.</li>
-                  <li>All has its own row above the tag row. Open and Started can still be reached from the header filter's Status dropdown; Done, Deleted, Review, and Close-out are available from Options.</li>
+                  <li>All has its own row above the tag row. Backlog and Started can still be reached from the header filter's Status dropdown; Done, Deleted, Review, and Close-out are available from Options.</li>
                   <li>The search field is session-only and searches across all active tasks regardless of the currently selected tab or filters. In Done, it searches done tasks only; in Deleted, it searches deleted tasks only.</li>
                 </ul>
               </section>
@@ -6308,7 +6308,7 @@ export default function App() {
                   <li>The header view icon switches the current session between List and Kanban. That toggle is temporary; persistent defaults are changed only in Options.</li>
                   <li>Browser and phone can have separate default view modes and separate edit-section defaults. Edit sections default to expanded on both devices and are stored in user settings when the Supabase columns exist, with local storage as fallback.</li>
                   <li>Task details can be switched with the header icon for the current view. Options set only the default for fresh sessions: Minimum hides parameter badges and card content, including the Additional details label. Maximum shows parameter badges; cards with a description, subtasks, or comments then show a collapsible Additional details label below the badges, and opening it reveals the labeled content panels.</li>
-                  <li>Kanban groups active tasks into the enabled columns Clarify, Open, and Started.</li>
+                  <li>Kanban groups active tasks into the enabled columns Clarify, Backlog, and Started.</li>
                   <li>On phones, Kanban scrolls horizontally by column, shows edge hints when more columns are available, and snaps to the next column while scrolling.</li>
                 </ul>
               </section>
