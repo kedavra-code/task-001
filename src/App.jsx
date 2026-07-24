@@ -4585,26 +4585,6 @@ export default function App() {
             <option value="maximum">Maximum</option>
           </select>
         </label>
-        <label className="menuSetting cardBadgeColumnSetting" title="Sets how many badge columns browser overview cards show. Phones always stay at 3 columns.">
-          <span>Browser overview card columns</span>
-          <select
-            value={cardBadgeColumns.overview}
-            onChange={event => updateCardBadgeColumnSetting("overview", event.target.value)}
-            title="Choose badge columns for browser overview cards"
-          >
-            {renderCardBadgeColumnOptions()}
-          </select>
-        </label>
-        <label className="menuSetting cardBadgeColumnSetting" title="Sets how many badge columns browser edit cards show. Phones always stay at 3 columns.">
-          <span>Browser edit card columns</span>
-          <select
-            value={cardBadgeColumns.edit}
-            onChange={event => updateCardBadgeColumnSetting("edit", event.target.value)}
-            title="Choose badge columns for browser edit cards"
-          >
-            {renderCardBadgeColumnOptions()}
-          </select>
-        </label>
         <span className="menuGroupTitle">Editing</span>
 
         <span className="sectionDefaultsLabel" title="Sets which edit sections are visible when a task is opened.">Edit sections Browser</span>
@@ -5157,7 +5137,7 @@ export default function App() {
               <section>
                 <h3>Cards</h3>
                 <ul>
-                  <li>Cards use fixed badge cells so values stay aligned across tasks. Phones always use three badge columns; browser list, browser edit, and browser Kanban badge columns can be configured separately in Options.</li>
+                  <li>Cards use fixed badge cells so values stay aligned across tasks. Phones always use three badge columns; browser list and edit cards also always use three. Only browser Kanban badge columns can be configured in Options.</li>
                   <li>Empty values show a dash. Start and Due keep their labels visible and may wrap to two lines on phones after the colon so the date stays visible.</li>
                   <li>Reached start dates, due-today dates, and overdue due dates are shown by coloring the date value red instead of adding separate badges.</li>
                   <li>Adjacent icons use the same size. Delete and completion are the card action icons. A direct task URL such as ?task-id=T-123 opens that task in Maximum detail view after login. In Minimum mode, clicking a task ID reveals that one card's description/subtasks/comments panels below the badges; clicking it again, or clicking another task ID, closes it, unlike true Maximum mode where those panels show directly for every card with no click needed. The save icon is a disk, completion uses a check, delete uses trash, close uses x, and a due-reminder warning uses a red exclamation mark near the task ID.</li>
