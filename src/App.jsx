@@ -3007,6 +3007,7 @@ export default function App() {
   const [isEditExitPromptOpen, setIsEditExitPromptOpen] = useState(false);
   const [highlightedTaskId, setHighlightedTaskId] = useState(null);
   const [openDescriptionTaskId, setOpenDescriptionTaskId] = useState(null);
+  const [maximizedTaskId, setMaximizedTaskId] = useState(null);
   const [undoStack, setUndoStack] = useState([]);
   const [redoStack, setRedoStack] = useState([]);
   const [isLoaded, setIsLoaded] = useState(!isSupabaseConfigured);
@@ -3142,7 +3143,7 @@ export default function App() {
 
     handledDeepLinkTaskParamRef.current = requestedTask;
     setActionMessage("");
-    showTaskDetails(task, { highlight: true, scroll: true, preserveView: false, forceListView: true });
+    showTaskDetails(task, { highlight: true, scroll: true, preserveView: false, forceListView: true, forceMaximum: true });
   }, [isLoaded, isCurrentUserAllowed, tasks, activeSelectedTagTabs, defaultStartTabs, defaultViewModes]);
 
 
@@ -3941,6 +3942,7 @@ export default function App() {
 
   function getMobileTaskCardProps(task, overrides = {}) {
     const isTaskDetailsOpen = openDescriptionTaskId === task.id;
+    const isForcedMaximum = maximizedTaskId === task.id && highlightedTaskId === task.id;
     return {
       task,
       highlightedTaskId,
@@ -3976,8 +3978,8 @@ export default function App() {
       showDeletedAt: showDeletedAtColumn,
       isMobileViewport,
       cardBadgeColumns,
-      hideOverviewDetailsUntilDescriptionOpen: shouldHideOverviewDetailsUntilOpen && !isTaskDetailsOpen,
-      alwaysExpandDetails: taskDetailDisplayMode === "maximum",
+      hideOverviewDetailsUntilDescriptionOpen: shouldHideOverviewDetailsUntilOpen && !isTaskDetailsOpen && !isForcedMaximum,
+      alwaysExpandDetails: taskDetailDisplayMode === "maximum" || isForcedMaximum,
       showBadgeSection: false,
       badgeSectionDefaultOpen: false,
       ...overrides
@@ -4133,10 +4135,11 @@ export default function App() {
     }
   }
 
-  function showTaskDetails(task, { highlight = true, scroll = true, preserveView = true, forceListView = false, toggle = false } = {}) {
+  function showTaskDetails(task, { highlight = true, scroll = true, preserveView = true, forceListView = false, toggle = false, forceMaximum = false } = {}) {
     const isOpenTaskDetails = openDescriptionTaskId === task.id;
     showTaskView(task, { highlight, scroll, preserveView });
     setOpenDescriptionTaskId(toggle && isOpenTaskDetails ? null : task.id);
+    setMaximizedTaskId(forceMaximum ? task.id : null);
     if (forceListView) setIsKanbanView(false);
   }
 
@@ -4834,7 +4837,7 @@ export default function App() {
       const task = tasks.find(candidate => candidate.id === taskId);
       if (!task) return;
 
-      showTaskDetails(task, { highlight: true, scroll: true, preserveView: false, forceListView: true });
+      showTaskDetails(task, { highlight: true, scroll: true, preserveView: false, forceListView: true, forceMaximum: true });
     });
   }
 
