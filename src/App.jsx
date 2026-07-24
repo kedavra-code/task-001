@@ -205,7 +205,7 @@ const STATUS_FILTER_BY_TAB = {
   started: "Gestartet"
 };
 const TAB_LAYOUT_ROW_COUNT = 2;
-const STATIC_TAB_IDS = ["all"];
+const STATIC_TAB_IDS = ["all", "done"];
 const DUE_STATUS_OPTIONS = ["Alle", "heute starten", "heute fällig", "überfällig", "geplant", "ohne Fälligkeit"];
 const CRITERIA_PLACEHOLDER = "...";
 const HANDLUNGSDRUCK_OPTIONS = ["hoch", "mittel", "niedrig"];
@@ -1126,7 +1126,7 @@ function getTagFromTabId(id) {
 
 function getDefaultTabLayout(tags = []) {
   return [
-    ["all"],
+    ["all", "done"],
     normalizeTags(tags, 0).map(getTagTabId)
   ];
 }
@@ -1134,6 +1134,7 @@ function getDefaultTabLayout(tags = []) {
 function migrateLegacyTabLayout(rows) {
   const [row0 = []] = rows;
   if (row0[0] !== "all" || row0.length <= 1) return rows;
+  if (row0.slice(1).some(id => STATIC_TAB_IDS.includes(id))) return rows;
   return [["all"], row0.slice(1)];
 }
 
@@ -4607,6 +4608,7 @@ export default function App() {
       const nextTab = isActiveListTab ? ACTIVE_TAB : tab;
       const nextDueStatus = isActiveListTab || tab === NEWEST_TAB || tab === REVIEW_TAB ? "Alle" : columnFilters.dueStatus;
       if (tab === REVIEW_TAB) setActiveTagScope("all");
+      if (nextTab === DONE_TAB) setIsKanbanView(false);
       setActiveAppTab(nextTab);
       clearEdit();
       setColumnFilters({ ...getDefaultColumnFilters(nextTab), dueStatus: nextDueStatus });
@@ -4634,6 +4636,7 @@ export default function App() {
   function showDoneTab() {
     requestEditExit(() => {
       setActionMessage("");
+      setIsKanbanView(false);
       setActiveAppTab(DONE_TAB);
       clearEdit();
       setColumnFilters(getDefaultColumnFilters(DONE_TAB));
@@ -6297,7 +6300,7 @@ export default function App() {
                 <ul>
                   <li>The top title resets the session to All without status, due, tag, or column filters. Current view, scope, mode, and search are shown in the info line below the tabs; the filter icon shows the active filter/sort count and lists them on hover. Done and Deleted count as view filters and can be left with Reset filters.</li>
                   <li>All is the primary tab. Tasks that need immediate attention, such as clarification, reached start dates, due-today work, overdue work, and matching subtask reminders, are marked directly on the task with a red exclamation mark and can also be shown as the optional Start reached and Overdue due tabs.</li>
-                  <li>All has its own row above the tag row. Backlog and Doing can still be reached from the header filter's Status dropdown; Done, Deleted, Review, and Close-out are available from Options.</li>
+                  <li>All and Done share the row above the tag row. Backlog and Doing can still be reached from the header filter's Status dropdown; Deleted, Review, and Close-out are available from Options.</li>
                   <li>The search field is session-only and searches across all active tasks regardless of the currently selected tab or filters. In Done, it searches done tasks only; in Deleted, it searches deleted tasks only.</li>
                 </ul>
               </section>

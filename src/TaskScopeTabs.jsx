@@ -28,6 +28,16 @@ export default function TaskScopeTabs({
       };
     }
 
+    if (id === "done") {
+      return {
+        label: "Done",
+        count: statusCounts.done,
+        isActive: activeAppTab === "done",
+        onClick: () => onShowListTab("done"),
+        title: "Show done tasks in the current scope"
+      };
+    }
+
     if (id === "newest") {
       return {
         label: "Newest",
