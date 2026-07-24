@@ -119,5 +119,4 @@ Keep this section in sync with the app — update it whenever behavior described
 ## Preferences
 
 - Keep the project in GitHub as the source of truth.
-- Use `NEXT.md` as a short end-of-session note.
 - Do not commit real secrets; use `.env.example` for environment variable names only.

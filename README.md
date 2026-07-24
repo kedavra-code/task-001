@@ -467,7 +467,6 @@ git commit -m "WIP: current state"
 git push
 ```
 
-Use `NEXT.md` as the handoff note between computers.
 - Task card badges use the fixed order `Prio`, `Tag`, `Status`, `Created`, `Start`, `Due`; non-applicable badge slots use invisible placeholders so card layouts stay stable.
 - Confirmation dialogs, Review reasons, completion-block messages, tag placeholders, and Supabase error messages must use English UI text (`Yes`/`No`, not German labels).
 - In browser task edit mode, Tag and Status form the first compact parameter row; Start date and Due sit directly below.
