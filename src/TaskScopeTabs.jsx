@@ -38,6 +38,16 @@ export default function TaskScopeTabs({
       };
     }
 
+    if (id === "deleted") {
+      return {
+        label: "Deleted",
+        count: statusCounts.deleted,
+        isActive: activeAppTab === "deleted",
+        onClick: () => onShowListTab("deleted"),
+        title: "Show deleted tasks in the current scope and restore them if needed"
+      };
+    }
+
     if (id === "newest") {
       return {
         label: "Newest",
