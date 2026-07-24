@@ -97,9 +97,11 @@ const CARD_BADGE_CELL_GAP = 5;
 const KANBAN_COLUMN_EXTRA_WIDTH = 36;
 const KANBAN_COLUMNS = [
   { key: "open", title: "Backlog" },
-  { key: "started", title: "Doing" }
+  { key: "started", title: "Doing" },
+  { key: "done", title: "Done" }
 ];
 const DEFAULT_KANBAN_COLUMN_KEYS = KANBAN_COLUMNS.map(column => column.key);
+const LEGACY_KANBAN_COLUMN_KEYS = ["open", "started"];
 const MAX_CARD_BADGE_COLUMNS = 8;
 const DESCRIPTION_PREVIEW_LIMIT = 128;
 const TEXT_LIMITS = {
@@ -440,6 +442,13 @@ function normalizeKanbanColumns(value) {
   return normalized.length > 0 ? normalized : [...DEFAULT_KANBAN_COLUMN_KEYS];
 }
 
+function migrateKanbanColumnKeys(value) {
+  const normalized = normalizeKanbanColumns(value);
+  const isLegacyDefault = normalized.length === LEGACY_KANBAN_COLUMN_KEYS.length &&
+    LEGACY_KANBAN_COLUMN_KEYS.every(key => normalized.includes(key));
+  return isLegacyDefault ? normalizeKanbanColumns([...normalized, "done"]) : normalized;
+}
+
 function normalizeCardBadgeColumns(value) {
   const parsed = typeof value === "string" ? safeJsonParse(value, {}) : value;
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
@@ -624,6 +633,7 @@ function isStarted(task) {
 }
 
 function getKanbanColumnKey(task) {
+  if (isDone(task)) return "done";
   return isStarted(task) ? "started" : "open";
 }
 
@@ -1874,7 +1884,7 @@ function loadEditSectionDefaults() {
 
 function loadKanbanColumnKeys() {
   try {
-    return normalizeKanbanColumns(JSON.parse(localStorage.getItem(KANBAN_COLUMNS_STORAGE_KEY) || "[]"));
+    return migrateKanbanColumnKeys(JSON.parse(localStorage.getItem(KANBAN_COLUMNS_STORAGE_KEY) || "[]"));
   } catch {
     return [...DEFAULT_KANBAN_COLUMN_KEYS];
   }
@@ -3451,7 +3461,7 @@ export default function App() {
           }
           hasAppliedRemoteStartTabRef.current = true;
           if (remoteSettings.kanbanColumnKeys !== null) {
-            setKanbanColumnKeys(remoteSettings.kanbanColumnKeys);
+            setKanbanColumnKeys(migrateKanbanColumnKeys(remoteSettings.kanbanColumnKeys));
           }
           if (remoteSettings.upcomingBadgeDefaults !== null) {
             setUpcomingBadgeDefaults(remoteSettings.upcomingBadgeDefaults);
@@ -3612,9 +3622,11 @@ export default function App() {
         ? isDone(task)
         : activeAppTab === DELETED_TAB
           ? true
-          : activeAppTab === NEWEST_TAB || activeAppTab === ACTIVE_TAB
+          : activeAppTab === NEWEST_TAB
             ? !isDone(task)
-            : matchesGoogleStatusFilter(task, columnFilters.googleStatus);
+            : activeAppTab === ACTIVE_TAB
+              ? (isKanbanView ? true : !isDone(task))
+              : matchesGoogleStatusFilter(task, columnFilters.googleStatus);
       const matchesDueStatus = matchesDueStatusFilter(task, columnFilters.dueStatus);
       const matchesTagScope = activeAppTab === REVIEW_TAB || activeTagScope === "all" || hasTag(task, activeTagScope);
       const matchesDeletedScope = activeAppTab === DELETED_TAB ? isDeleted(task) : !isDeleted(task);
@@ -3652,7 +3664,7 @@ export default function App() {
         matchesDeletedScope
       );
     });
-  }, [tasks, columnFilters, isOverviewSearchActive, activeTagScope, activeAppTab, tasksById, childIdsByParent, taskFilterCacheById]);
+  }, [tasks, columnFilters, isOverviewSearchActive, activeTagScope, activeAppTab, isKanbanView, tasksById, childIdsByParent, taskFilterCacheById]);
 
   const visibleTasksWithEditingTask = useMemo(() => {
     if (!editingId) return visibleTasks;
@@ -6133,7 +6145,7 @@ export default function App() {
                   <li>The header view icon switches the current session between List and Kanban. That toggle is temporary; persistent defaults are changed only in Options.</li>
                   <li>Browser and phone can have separate default view modes and separate edit-section defaults. Edit sections default to expanded on both devices and are stored in user settings when the Supabase columns exist, with local storage as fallback.</li>
                   <li>Task details can be switched with the header icon for the current view. Options set only the default for fresh sessions: Minimum hides parameter badges and card content, including the Additional details label. Maximum shows parameter badges; cards with a description, subtasks, or comments then show a collapsible Additional details label below the badges, and opening it reveals the labeled content panels.</li>
-                  <li>Kanban groups active tasks into the enabled columns Backlog and Doing.</li>
+                  <li>Kanban groups tasks into the enabled columns Backlog, Doing, and Done; the Done column is the only place in the All tab and tag scopes where done tasks show up outside the dedicated Done tab/menu view.</li>
                   <li>On phones, Kanban scrolls horizontally by column, shows edge hints when more columns are available, and snaps to the next column while scrolling.</li>
                 </ul>
               </section>
