@@ -40,7 +40,7 @@ export default function TaskScopeTabs({
 
     if (id === "deleted") {
       return {
-        label: "Deleted",
+        label: "Del",
         count: statusCounts.deleted,
         isActive: activeAppTab === "deleted",
         onClick: () => onShowListTab("deleted"),
