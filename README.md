@@ -88,9 +88,9 @@ Only open tasks can be selected or shown as dependency targets. When a task is m
 It is displayed in the overview and edit views, but it is not set manually.
 Whenever a task is normalized or saved, the stored value is recalculated from
 the saved criteria so the persisted `Prio` matches the displayed value.
-`Priority = Impact × Damage`.
+`Priority = Impact × Likelihood`.
 
-In the desktop table, `Predecessors` and `Successors` are separate columns. If several predecessors or successors exist, the relevant column opens a small popup for choosing the target task. Compact cards show predecessors and successors as labeled clickable text in the card details outside edit mode; clicking a related task jumps to it while preserving the current view, and multiple related tasks use the same picker popup pattern. In Minimum detail mode, relation details stay hidden because the `Additional details` label is not shown.
+Compact cards show predecessors and successors as labeled clickable text in the card details outside edit mode; clicking a related task jumps to it while preserving the current view, and multiple related tasks use the same picker popup pattern. In edit mode, `Predecessors` and `Successors` use a searchable multi-select popup for choosing target tasks. In Minimum detail mode, relation details stay hidden because the `Additional details` label is not shown.
 
 Clicking a dependency target preserves the current overview view and scrolls to the selected task if it is visible there, highlighting it briefly.
 

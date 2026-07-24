@@ -232,11 +232,11 @@ function getDefaultColumnFilters(tab = "open") {
 }
 
 const PRIO_HELP =
-  "Priority answers: how important is this?\n\nIf damage is high or impact is high -> P1\nOtherwise, if damage and impact are both medium -> P2\nOtherwise -> P3\n\nDefault sort: prioritize -> P1 -> P2 -> P3";
+  "Priority answers: how important is this?\n\nIf likelihood is high or impact is high -> P1\nOtherwise, if likelihood and impact are both medium -> P2\nOtherwise -> P3\n\nDefault sort: prioritize -> P1 -> P2 -> P3";
 
 const EDIT_FIELD_HELP = {
-  risiko: "How high is the damage if the task is not done, or done too late? Together with impact, this derives Prio.",
-  impact: "How large is the task impact? Together with damage, this derives Prio.",
+  risiko: "How likely is it that the task is not done, or done too late? Together with impact, this derives Prio.",
+  impact: "How large is the task impact? Together with likelihood, this derives Prio.",
   prio: PRIO_HELP,
   tags: "Tag used to classify the task. A task can currently have one tag.",
   task: "Short, clear task title.",
@@ -546,7 +546,7 @@ function normalizeColumnFilters(value, tab = "open") {
 
 function getEditTooltip(field, value) {
   const labelByField = {
-    risiko: "Damage",
+    risiko: "Likelihood",
     impact: "Impact",
     prio: "Prio",
     tags: "Tag",
@@ -567,7 +567,7 @@ function getDerivedCriteriaTooltip(task, field) {
   if (!task) return "";
   if (field === "prio") {
     return [
-      `Damage: ${getDisplayValue(task.risiko)}`,
+      `Likelihood: ${getDisplayValue(task.risiko)}`,
       `Impact: ${normalizeText(task.impact) || "-"}`
     ].join("\n");
   }
@@ -5592,7 +5592,7 @@ export default function App() {
 
             <div className="formRow compact captureAdvancedFields">
               <SelectField
-                label="Damage"
+                label="Likelihood"
                 value={draft.risiko}
                 options={RISIKO_OPTIONS}
                 onChange={value => updateDraft("risiko", value)}
@@ -5807,7 +5807,7 @@ export default function App() {
               <section>
                 <h3>Task Values</h3>
                 <ul>
-                  <li>Priority answers: how important is this? It is derived from damage and impact. Default sort: Prioritize, P1, P2, P3.</li>
+                  <li>Priority answers: how important is this? It is derived from likelihood and impact. Default sort: Prioritize, P1, P2, P3.</li>
                   <li>When a task first becomes Doing and has no start date, the app sets the start date to today.</li>
                 </ul>
               </section>
@@ -7383,7 +7383,7 @@ function MobileTaskCard({
           </summary>
           <div className="mobileEditGrid">
           <label className="mobileEditCriterionField" title={getTooltip("risiko", data.risiko)}>
-            <span>Damage</span>
+            <span>Likelihood</span>
             <select value={data.risiko} onChange={event => onChange("risiko", event.target.value)} title={getTooltip("risiko", data.risiko)}>
               <option value={CRITERIA_PLACEHOLDER} disabled>
                 {CRITERIA_PLACEHOLDER} select
