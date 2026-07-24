@@ -3690,11 +3690,9 @@ tr[data-edit-surface="true"] .taskCell {
   }
 
   .appTabs {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
     width: 100%;
-  }
-
-  .appTabs button {
-    flex: 1;
   }
 
   .formRow,
