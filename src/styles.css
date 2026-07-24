@@ -319,10 +319,6 @@ button {
   border-top: 0;
 }
 
-.sectionDefaultSetting {
-  min-width: 0;
-}
-
 .menuCheckbox {
   display: inline-flex;
   align-items: center;

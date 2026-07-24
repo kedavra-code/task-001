@@ -31,8 +31,6 @@ const TOOLTIP_ENABLED_STORAGE_KEY = "task-001.tooltips-enabled.v1";
 const DARK_MODE_STORAGE_KEY = "task-001.dark-mode.v1";
 const DARK_MODE_BROWSER_STORAGE_KEY = "task-001.dark-mode-browser.v1";
 const DARK_MODE_MOBILE_STORAGE_KEY = "task-001.dark-mode-mobile.v1";
-const EDIT_SECTION_DEFAULTS_STORAGE_KEY = "task-001.edit-section-defaults.v1";
-const EDIT_SECTION_DEFAULTS_VERSION = 5;
 const TAB_LAYOUT_STORAGE_KEY = "task-001.tab-layout.v1";
 const CARD_BADGE_COLUMNS_STORAGE_KEY = "task-001.card-badge-columns.v1";
 const UPCOMING_BADGE_DEFAULTS_STORAGE_KEY = "task-001.upcoming-badge-defaults.v1";
@@ -48,26 +46,6 @@ const TASK_ID_PREFIX = "T";
 const MAX_TASK_TAGS = 1;
 const MAX_TAG_CATALOG_SIZE = 10;
 const ALLOWED_USER_EMAIL = "lars.tremmel@gmail.com";
-const DEFAULT_EDIT_SECTION_STATE = {
-  parameters: true,
-  description: true,
-  subtasks: true,
-  comments: true
-};
-const DEFAULT_EDIT_SECTION_DEFAULTS = {
-  browser: {
-    parameters: true,
-    description: true,
-    subtasks: true,
-    comments: true
-  },
-  mobile: {
-    parameters: true,
-    description: true,
-    subtasks: true,
-    comments: true
-  }
-};
 const DEFAULT_CARD_BADGE_COLUMNS = { overview: "default", edit: "default", kanban: "default" };
 const TASK_DETAIL_DEFAULTS_VERSION = 3;
 const TASK_DETAIL_MODES = ["minimum", "maximum"];
@@ -348,41 +326,6 @@ const SAMPLE_TASKS = [
 
 function getEffectivePrio(prio) {
   return prio === CRITERIA_PLACEHOLDER ? "priorisieren" : prio;
-}
-
-function normalizeEditSectionDefaults(value) {
-  const parsed = typeof value === "string" ? safeJsonParse(value, {}) : value;
-  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-    return {
-      version: EDIT_SECTION_DEFAULTS_VERSION,
-      browser: { ...DEFAULT_EDIT_SECTION_DEFAULTS.browser },
-      mobile: { ...DEFAULT_EDIT_SECTION_DEFAULTS.mobile }
-    };
-  }
-
-  function normalizeSectionState(source = {}, fallback = DEFAULT_EDIT_SECTION_DEFAULTS.browser) {
-    return Object.fromEntries(
-      Object.entries(DEFAULT_EDIT_SECTION_STATE).map(([key]) => [
-      key,
-        typeof source?.[key] === "boolean" ? source[key] : fallback[key]
-    ])
-    );
-  }
-
-  const hasDeviceDefaults = parsed.browser || parsed.mobile;
-  if (!hasDeviceDefaults || parsed.version !== EDIT_SECTION_DEFAULTS_VERSION) {
-    return {
-      version: EDIT_SECTION_DEFAULTS_VERSION,
-      browser: { ...DEFAULT_EDIT_SECTION_DEFAULTS.browser },
-      mobile: { ...DEFAULT_EDIT_SECTION_DEFAULTS.mobile }
-    };
-  }
-
-  return {
-    version: EDIT_SECTION_DEFAULTS_VERSION,
-    browser: normalizeSectionState(parsed.browser, DEFAULT_EDIT_SECTION_DEFAULTS.browser),
-    mobile: normalizeSectionState(parsed.mobile, DEFAULT_EDIT_SECTION_DEFAULTS.mobile)
-  };
 }
 
 function normalizeCardBadgeColumnValue(value) {
@@ -1493,7 +1436,6 @@ async function loadRemoteUserSettings(userId) {
         tagCatalog: normalizeTagCatalog(legacyData?.available_tags),
         tooltipsEnabled: null,
         darkModeSettings: null,
-        editSectionDefaults: null,
         tabLayout: null,
         cardBadgeColumns: null,
         defaultViewModes: null,
@@ -1518,14 +1460,6 @@ async function loadRemoteUserSettings(userId) {
   const legacyDarkMode = await loadOptionalUserSettingBoolean(userId, "dark_mode");
   const browserDarkMode = await loadOptionalUserSettingBoolean(userId, "dark_mode_browser");
   const mobileDarkMode = await loadOptionalUserSettingBoolean(userId, "dark_mode_mobile");
-
-  const { data: editSectionDefaultsData, error: editSectionDefaultsError } = await supabase
-    .from("user_settings")
-    .select("edit_section_defaults")
-    .eq("user_id", userId)
-    .maybeSingle();
-  const missingEditSectionDefaultsColumn = editSectionDefaultsError && String(editSectionDefaultsError.message || "").toLowerCase().includes("edit_section_defaults");
-  if (editSectionDefaultsError && !missingEditSectionDefaultsColumn) throw editSectionDefaultsError;
 
   const { data: cardBadgeColumnsData, error: cardBadgeColumnsError } = await supabase
     .from("user_settings")
@@ -1601,7 +1535,6 @@ async function loadRemoteUserSettings(userId) {
         browser: browserDarkMode ?? legacyDarkMode,
         mobile: mobileDarkMode ?? legacyDarkMode
       }),
-    editSectionDefaults: missingEditSectionDefaultsColumn ? null : normalizeEditSectionDefaults(editSectionDefaultsData?.edit_section_defaults),
     tabLayout: missingTabLayoutColumn ? null : normalizeTabLayout(tabLayoutData?.tab_layout, normalizeTags(data?.selected_tag_tabs, 0)),
     cardBadgeColumns: missingCardBadgeColumnsColumn ? null : normalizeCardBadgeColumns(cardBadgeColumnsData?.card_badge_columns),
     defaultViewModes: missingDefaultViewModeColumn ? null : {
@@ -1649,7 +1582,7 @@ async function updateOptionalUserSettingColumns(userId, values, missingColumnNam
   if (!missingColumnNames.some(columnName => message.includes(columnName))) throw error;
 }
 
-async function saveRemoteUserSettings(userId, selectedTagTabs, tagCatalog, tooltipsEnabled, darkModeSettings, editSectionDefaults, tabLayout, cardBadgeColumns, defaultViewModes, defaultStartTabs, kanbanColumnKeys, upcomingBadgeDefaults, deletedRetentionDays) {
+async function saveRemoteUserSettings(userId, selectedTagTabs, tagCatalog, tooltipsEnabled, darkModeSettings, tabLayout, cardBadgeColumns, defaultViewModes, defaultStartTabs, kanbanColumnKeys, upcomingBadgeDefaults, deletedRetentionDays) {
   const normalizedDarkModeSettings = normalizeDarkModeSettings(darkModeSettings);
   const { error } = await supabase
     .from("user_settings")
@@ -1680,10 +1613,6 @@ async function saveRemoteUserSettings(userId, selectedTagTabs, tagCatalog, toolt
   await updateOptionalUserSettingColumns(userId, {
     dark_mode: normalizedDarkModeSettings.browser
   }, ["dark_mode"]);
-
-  await updateOptionalUserSettingColumns(userId, {
-    edit_section_defaults: normalizeEditSectionDefaults(editSectionDefaults)
-  }, ["edit_section_defaults"]);
 
   await updateOptionalUserSettingColumns(userId, {
     card_badge_columns: normalizeCardBadgeColumns(cardBadgeColumns)
@@ -1792,15 +1721,6 @@ function isKanbanMobileViewportNow() {
   if (typeof window === "undefined" || !window.matchMedia) return false;
   return window.matchMedia("(max-width: 760px), (max-width: 900px) and (orientation: landscape)").matches;
 }
-
-function loadEditSectionDefaults() {
-  try {
-    return normalizeEditSectionDefaults(JSON.parse(localStorage.getItem(EDIT_SECTION_DEFAULTS_STORAGE_KEY) || "{}"));
-  } catch {
-    return { ...DEFAULT_EDIT_SECTION_DEFAULTS };
-  }
-}
-
 
 function loadKanbanColumnKeys() {
   try {
@@ -2025,15 +1945,6 @@ function saveDarkModeSettings(settings) {
     // Local UI preference only.
   }
 }
-
-function saveEditSectionDefaults(defaults) {
-  try {
-    localStorage.setItem(EDIT_SECTION_DEFAULTS_STORAGE_KEY, JSON.stringify(normalizeEditSectionDefaults(defaults)));
-  } catch {
-    // Local UI preference only.
-  }
-}
-
 
 function readOAuthCallbackTokens() {
   const hash = window.location.hash.startsWith("#")
@@ -2763,8 +2674,6 @@ export default function App() {
   const [darkModeSettings, setDarkModeSettings] = useState(loadDarkModeSettings);
   const [isMobileViewport, setIsMobileViewport] = useState(initialIsMobileViewport);
   const [isKanbanMobileViewport, setIsKanbanMobileViewport] = useState(isKanbanMobileViewportNow);
-  const [editSectionDefaults, setEditSectionDefaults] = useState(loadEditSectionDefaults);
-  const activeEditSectionDefaults = normalizeEditSectionDefaults(editSectionDefaults)[isMobileViewport ? "mobile" : "browser"];
   const [cardBadgeColumns, setCardBadgeColumns] = useState(loadCardBadgeColumns);
   const [upcomingBadgeDefaults, setUpcomingBadgeDefaults] = useState(loadUpcomingBadgeDefaults);
   const [taskDetailsExpandedOverride, setTaskDetailsExpandedOverride] = useState(null);
@@ -2965,10 +2874,6 @@ export default function App() {
   }, [activeDarkMode]);
 
   useEffect(() => {
-    saveEditSectionDefaults(editSectionDefaults);
-  }, [editSectionDefaults]);
-
-  useEffect(() => {
     saveCardBadgeColumns(cardBadgeColumns);
   }, [cardBadgeColumns]);
 
@@ -2998,7 +2903,6 @@ export default function App() {
         tagCatalog,
         areTooltipsEnabled,
         darkModeSettings,
-        editSectionDefaults,
         visibleTabLayout,
         cardBadgeColumns,
         defaultViewModes,
@@ -3012,7 +2916,7 @@ export default function App() {
     }, 400);
 
     return () => window.clearTimeout(syncSettingsTimeout);
-  }, [selectedTagTabs, tagCatalog, visibleTabLayout, activeSelectedTagTabs, areTooltipsEnabled, darkModeSettings, editSectionDefaults, cardBadgeColumns, defaultViewModes, defaultStartTabs, kanbanColumnKeys, upcomingBadgeDefaults, deletedRetentionDays, isSettingsLoaded, session, isCurrentUserAllowed]);
+  }, [selectedTagTabs, tagCatalog, visibleTabLayout, activeSelectedTagTabs, areTooltipsEnabled, darkModeSettings, cardBadgeColumns, defaultViewModes, defaultStartTabs, kanbanColumnKeys, upcomingBadgeDefaults, deletedRetentionDays, isSettingsLoaded, session, isCurrentUserAllowed]);
 
   useEffect(() => {
     if (!isLoaded || !isCurrentUserAllowed) return;
@@ -3159,10 +3063,6 @@ export default function App() {
           if (remoteSettings.darkModeSettings !== null) {
             setDarkModeSettings(current =>
               preferLocalWhenRemoteIsDefault(remoteSettings.darkModeSettings, { browser: false, mobile: false }, current));
-          }
-          if (remoteSettings.editSectionDefaults !== null) {
-            setEditSectionDefaults(current =>
-              preferLocalWhenRemoteIsDefault(remoteSettings.editSectionDefaults, DEFAULT_EDIT_SECTION_DEFAULTS, current));
           }
           if (remoteSettings.cardBadgeColumns !== null) {
             setCardBadgeColumns(current =>
@@ -3661,7 +3561,6 @@ export default function App() {
       dueReminderTooltip: getDueReminderTooltip(editingId === task.id && editDraft ? editDraft : task),
       editDraft,
       editFocusField: editingId === task.id ? editFocusField : "",
-      editSectionDefaults: activeEditSectionDefaults,
       tagOptions,
       onStartEdit: startEdit,
       onCancelEdit: cancelEditWithPrompt,
@@ -4393,16 +4292,6 @@ export default function App() {
     event.target.value = "";
   }
 
-  function updateEditSectionDefault(device, section, value) {
-    setEditSectionDefaults(current => normalizeEditSectionDefaults({
-      ...current,
-      [device]: {
-        ...normalizeEditSectionDefaults(current)[device],
-        [section]: value === "open"
-      }
-    }));
-  }
-
   function toggleKanbanColumn(key) {
     setKanbanColumnKeys(current => {
       const normalized = normalizeKanbanColumns(current);
@@ -4585,36 +4474,6 @@ export default function App() {
             <option value="maximum">Maximum</option>
           </select>
         </label>
-        <span className="menuGroupTitle">Editing</span>
-
-        <span className="sectionDefaultsLabel" title="Sets which edit sections are visible when a task is opened.">Edit sections Browser</span>
-        {[["parameters", "Parameter"], ["description", "Description"], ["subtasks", "Subtasks"], ["comments", "Comments"]].map(([key, label]) => (
-          <label key={`browser-${key}`} className="menuSetting sectionDefaultSetting" title={`${label} defaults to expanded or collapsed when editing opens in the browser.`}>
-            <span>{label}</span>
-            <select
-              value={editSectionDefaults.browser[key] ? "open" : "closed"}
-              onChange={event => updateEditSectionDefault("browser", key, event.target.value)}
-              title={`${label}: choose browser default state`}
-            >
-              <option value="open">Expanded</option>
-              <option value="closed">Collapsed</option>
-            </select>
-          </label>
-        ))}
-        <span className="sectionDefaultsLabel" title="Sets which edit sections are visible when a task is opened on the phone.">Edit sections Phone</span>
-        {[["parameters", "Parameter"], ["description", "Description"], ["subtasks", "Subtasks"], ["comments", "Comments"]].map(([key, label]) => (
-          <label key={`mobile-${key}`} className="menuSetting sectionDefaultSetting" title={`${label} defaults to expanded or collapsed when editing opens on the phone.`}>
-            <span>{label}</span>
-            <select
-              value={editSectionDefaults.mobile[key] ? "open" : "closed"}
-              onChange={event => updateEditSectionDefault("mobile", key, event.target.value)}
-              title={`${label}: choose phone default state`}
-            >
-              <option value="open">Expanded</option>
-              <option value="closed">Collapsed</option>
-            </select>
-          </label>
-        ))}
       </div>
       <span className="menuGroupTitle menuManagementTitle">Management</span>
       <button type="button" className="secondaryButton menuDocButton" onClick={openUserDoc} title="Open current user documentation in the app">
@@ -5118,7 +4977,7 @@ export default function App() {
                 <h3>Views</h3>
                 <ul>
                   <li>The header view icon switches the current session between List and Kanban. That toggle is temporary; persistent defaults are changed only in Options.</li>
-                  <li>Browser and phone can have separate default view modes and separate edit-section defaults. Edit sections default to expanded on both devices and are stored in user settings when the Supabase columns exist, with local storage as fallback.</li>
+                  <li>Browser and phone can have separate default view modes. Edit sections (Parameter, Description, Subtasks, Comments) always default to expanded on both devices; this is not configurable.</li>
                   <li>Task details can be switched with the header icon for the current view. Options set only the default for fresh sessions: Minimum hides parameter badges and card content until a task's ID is clicked. Maximum shows parameter badges; cards with a description, subtasks, or comments show their labeled content panels directly below the badges, with no click needed.</li>
                   <li>Kanban groups tasks into the enabled columns Backlog, Doing, and Done; the Done column is the only place in the All tab and tag scopes where done tasks show up outside the dedicated Done tab/menu view.</li>
                   <li>On browser, dragging a card to another Kanban column changes its status (Backlog, Doing, or Done) directly, including the usual start-date auto-fill and completion checks; the current view stays put instead of jumping to that status.</li>
@@ -5169,7 +5028,7 @@ export default function App() {
               <section>
                 <h3>Options</h3>
                 <ul>
-                  <li>Options contains persistent settings for layout, dark mode, tooltips, browser/phone edit section defaults, tab layout, badge columns, Kanban columns, default views, tags, users, import/export, and logout.</li>
+                  <li>Options contains persistent settings for layout, dark mode, tooltips, tab layout, badge columns, Kanban columns, default views, tags, users, import/export, and logout.</li>
                   <li>Only settings changed in Options persist across app restarts. Working selections such as active tab, tag scope, search text, the header List/Kanban toggle, and the header task-detail toggle remain session-only while the app is open. A fresh app session starts from the Options defaults.</li>
                   <li>Tags are managed in Options. Up to 10 tags can exist, selected tags can become top-row tag tabs, and tag order can be changed by drag-and-drop.</li>
                 </ul>
@@ -6308,7 +6167,6 @@ function MobileTaskCard({
   isEditing,
   hasUnsavedChanges,
   editDraft,
-  editSectionDefaults,
   tagOptions,
   onStartEdit,
   onCancelEdit,
@@ -6338,7 +6196,7 @@ function MobileTaskCard({
   const deleted = isDeleted(task);
   const [isDoneConfirmOpen, setIsDoneConfirmOpen] = useState(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
-  const [isParametersOpen, setIsParametersOpen] = useState(editSectionDefaults.parameters);
+  const [isParametersOpen, setIsParametersOpen] = useState(true);
   const doneConfirmRef = useRef(null);
   const deleteConfirmRef = useRef(null);
   const statusToggleRef = useRef(null);
@@ -6376,8 +6234,8 @@ function MobileTaskCard({
     .join(" ");
 
   useEffect(() => {
-    if (isEditing) setIsParametersOpen(editSectionDefaults.parameters);
-  }, [isEditing, task.id, editSectionDefaults.parameters]);
+    if (isEditing) setIsParametersOpen(true);
+  }, [isEditing, task.id]);
 
   useEffect(() => {
     if (!isDoneConfirmOpen && !isDeleteConfirmOpen) return undefined;
@@ -6536,7 +6394,7 @@ function MobileTaskCard({
           </div>
         )}
 
-        <details key={`${task.id}-parameters-${editSectionDefaults.parameters}`} className="taskEditSection taskEditSectionParameters" open={isParametersOpen} onToggle={event => setIsParametersOpen(event.currentTarget.open)}>
+        <details key={`${task.id}-parameters`} className="taskEditSection taskEditSectionParameters" open={isParametersOpen} onToggle={event => setIsParametersOpen(event.currentTarget.open)}>
           <summary>
             <span className="taskEditSectionTitle">Parameter</span>
             {!isParametersOpen && (
@@ -6630,7 +6488,7 @@ function MobileTaskCard({
           </div>
         </details>
 
-        <details key={`${task.id}-description-${editSectionDefaults.description}`} className="taskEditSection taskEditSectionDescription" open={editSectionDefaults.description}>
+        <details key={`${task.id}-description`} className="taskEditSection taskEditSectionDescription" open>
           <summary>Description</summary>
           <div className="taskEditSectionContent" title={getTooltip("beschreibung", data.beschreibung)}>
             <DescriptionEditor
@@ -6642,7 +6500,7 @@ function MobileTaskCard({
           </div>
         </details>
 
-        <details key={`${task.id}-subtasks-${editSectionDefaults.subtasks}`} className="taskEditSection taskEditSectionSubtasks" open={editSectionDefaults.subtasks}>
+        <details key={`${task.id}-subtasks`} className="taskEditSection taskEditSectionSubtasks" open>
           <summary>Subtasks</summary>
           <div className="taskEditSectionContent" title={getTooltip("subtasks", `${normalizeSubtasks(data.subtasks).length} Subtasks`)}>
             <SubtaskEditor
@@ -6656,7 +6514,7 @@ function MobileTaskCard({
           </div>
         </details>
 
-        <details key={`${task.id}-comments-${editSectionDefaults.comments}`} className="taskEditSection taskEditSectionComments" open={editSectionDefaults.comments}>
+        <details key={`${task.id}-comments`} className="taskEditSection taskEditSectionComments" open>
           <summary>Comments</summary>
           <div className="taskEditSectionContent" title={getTooltip("comments", `${normalizeComments(data.comments).length} Comments`)}>
             <CommentEditor
