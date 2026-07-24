@@ -3804,7 +3804,6 @@ export default function App() {
       onToggleDone: toggleDone,
       onShareTask: shareTask,
       onQuickChange: updateTaskField,
-      onShowTask: showTask,
       onChange: updateEditDraft,
       isDescriptionOpen: openDescriptionTaskId === task.id,
       onToggleDescription: () => setOpenDescriptionTaskId(current => current === task.id ? null : task.id),
@@ -3968,10 +3967,9 @@ export default function App() {
     }
   }
 
-  function showTaskDetails(task, { highlight = true, scroll = true, preserveView = true, forceListView = false, toggle = false, forceMaximum = false } = {}) {
-    const isOpenTaskDetails = openDescriptionTaskId === task.id;
+  function showTaskDetails(task, { highlight = true, scroll = true, preserveView = true, forceListView = false, forceMaximum = false } = {}) {
     showTaskView(task, { highlight, scroll, preserveView });
-    setOpenDescriptionTaskId(toggle && isOpenTaskDetails ? null : task.id);
+    setOpenDescriptionTaskId(task.id);
     setMaximizedTaskId(forceMaximum ? task.id : null);
     if (forceListView) setIsKanbanView(false);
   }
@@ -4582,17 +4580,6 @@ export default function App() {
     reader.readAsText(file);
     event.target.value = "";
   }
-
-  function showTask(taskId) {
-    requestEditExit(() => {
-      setActionMessage("");
-      const task = tasks.find(candidate => candidate.id === taskId);
-      if (!task) return;
-
-      showTaskDetails(task, { highlight: true, scroll: true, preserveView: true, toggle: true });
-    });
-  }
-
 
   function updateEditSectionDefault(device, section, value) {
     setEditSectionDefaults(current => normalizeEditSectionDefaults({
@@ -5528,7 +5515,7 @@ export default function App() {
                   <li>Cards use fixed badge cells so values stay aligned across tasks. Phones always use three badge columns; browser list, browser edit, and browser Kanban badge columns can be configured separately in Options.</li>
                   <li>Empty values show a dash. Start and Due keep their labels visible and may wrap to two lines on phones after the colon so the date stays visible.</li>
                   <li>Reached start dates, due-today dates, and overdue due dates are shown by coloring the date value red instead of adding separate badges.</li>
-                  <li>Adjacent icons use the same size. Share, delete, and completion are the card action icons. The Share icon includes a direct task URL such as ?task-id=T-123, which opens the task in Maximum detail view after login. Clicking a task ID while the session is in Minimum mode locally opens just that card's badges, without changing the global view mode or affecting any other card; its description/subtasks/comments still open through a collapsible Additional details label below the badges, unlike true Maximum mode where those panels show directly with no label to click. The save icon is a disk, completion uses a check, delete uses trash, close uses x, and a due-reminder warning uses a red exclamation mark near the task ID.</li>
+                  <li>Adjacent icons use the same size. Share, delete, and completion are the card action icons. The Share icon includes a direct task URL such as ?task-id=T-123, which opens the task in Maximum detail view after login. The task ID itself is a plain label; in Minimum mode, its card's description/subtasks/comments open through a collapsible Additional details label below the badges, unlike true Maximum mode where those panels show directly with no label to click. The save icon is a disk, completion uses a check, delete uses trash, close uses x, and a due-reminder warning uses a red exclamation mark near the task ID.</li>
                 </ul>
               </section>
 
@@ -6708,7 +6695,6 @@ function MobileTaskCard({
   onRestore,
   onToggleDone,
   onShareTask,
-  onShowTask,
   onChange,
   isDescriptionOpen = false,
   onToggleDescription = () => {},
@@ -7078,14 +7064,7 @@ function MobileTaskCard({
                 !
               </MobileMetaValue>
             )}
-            <button
-              type="button"
-              className="taskIdButton"
-              onClick={() => onShowTask(task.id)}
-              title="Show/hide task details"
-            >
-              {task.taskCode}
-            </button>
+            <span className="taskIdButton" title="Task ID">{task.taskCode}</span>
             <span className="mobileTaskIdSeparator">:</span>
             <h2>{task.task}</h2>
           </div>
