@@ -265,12 +265,12 @@ test("overview free-text search matches all words across task fields", () => {
   assert.equal(matchesFreeTextSearch(values, ""), true);
 });
 
-test("global overview search ignores normal views but respects done and deleted scopes", () => {
+test("global overview search includes done tasks outside Done but still respects Deleted scope", () => {
   const values = ["BioMed", "Kein eigenes SLA"];
   assert.equal(matchesGlobalTaskSearch(values, "biomed", { deleted: false, deletedView: false }), true);
   assert.equal(matchesGlobalTaskSearch(values, "biomed", { deleted: true, deletedView: false }), false);
   assert.equal(matchesGlobalTaskSearch(values, "biomed", { deleted: true, deletedView: true }), true);
-  assert.equal(matchesGlobalTaskSearch(values, "biomed", { done: true, doneView: false }), false);
+  assert.equal(matchesGlobalTaskSearch(values, "biomed", { done: true, doneView: false }), true);
   assert.equal(matchesGlobalTaskSearch(values, "biomed", { done: true, doneView: true }), true);
   assert.equal(matchesGlobalTaskSearch(values, "biomed", { done: false, doneView: true }), false);
   assert.equal(matchesGlobalTaskSearch(values, "", { deleted: false, deletedView: false }), false);

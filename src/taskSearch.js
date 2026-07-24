@@ -15,6 +15,6 @@ export function matchesFreeTextSearch(values, query) {
 export function matchesGlobalTaskSearch(values, query, { deleted = false, deletedView = false, done = false, doneView = false } = {}) {
   if (!String(query || "").trim()) return false;
   if (deletedView ? !deleted : deleted) return false;
-  if (!deletedView && (doneView ? !done : done)) return false;
+  if (!deletedView && doneView && !done) return false;
   return matchesFreeTextSearch(values, query);
 }
