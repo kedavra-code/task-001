@@ -4358,11 +4358,6 @@ export default function App() {
     setTabLayout(current => moveTabInLayout(current, sourceId, targetId, rowIndex, activeSelectedTagTabs));
   }
 
-  function resetTabLayout() {
-    setTabLayout(getDefaultTabLayout(activeSelectedTagTabs));
-    setActionMessage("Tab layout reset.");
-  }
-
   function removeCatalogTag(tag) {
     const normalizedTag = normalizeTag(tag);
     if (!normalizedTag) return;
@@ -5076,11 +5071,6 @@ export default function App() {
           />
           <span>Show tooltips</span>
         </label>
-        <span className="menuGroupTitle">Tabs</span>
-
-        <button type="button" className="secondaryButton menuResetTabsButton" onClick={resetTabLayout} title="Resets tab layout to All, then tags.">
-          Reset tabs
-        </button>
         <span className="menuGroupTitle">Layout</span>
         <label className="menuSetting layoutSetting" title="Switches browser layout between light and dark mode.">
           <span>Layout Browser</span>

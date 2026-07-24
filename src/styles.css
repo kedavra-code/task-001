@@ -739,10 +739,6 @@ main {
   font-weight: 800;
 }
 
-.menuResetTabsButton {
-  width: 100%;
-}
-
 .summaryTile {
   display: flex;
   align-items: center;
