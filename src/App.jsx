@@ -3019,7 +3019,6 @@ export default function App() {
   const [isAccessListLoaded, setIsAccessListLoaded] = useState(!isSupabaseConfigured);
   const [userAccessMessage, setUserAccessMessage] = useState("");
   const [newAllowedUserEmail, setNewAllowedUserEmail] = useState("");
-  const [captureMessage, setCaptureMessage] = useState("");
   const [actionMessage, setActionMessage] = useState("");
   const [isActionMenuOpen, setIsActionMenuOpen] = useState(false);
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
@@ -4000,7 +3999,6 @@ export default function App() {
   }, [editingId, hasAnyUnsavedEditChanges, editDraft, editBaseline, tasks]);
 
   function updateDraft(field, value) {
-    setCaptureMessage("");
     setActionMessage("");
     if (field === "tags") activateTagTabs(value);
     setDraft(current => applyCriteriaChange(current, field, value));
@@ -4242,7 +4240,10 @@ export default function App() {
 
     updateTasksWithUndo(nextTasks);
     setDraft(createEmptyTask());
-    setCaptureMessage(nextTaskCode);
+    setActionMessage(`Task ${nextTaskCode} created`);
+    setActiveAppTab(ACTIVE_TAB);
+    setColumnFilters(getDefaultColumnFilters(ACTIVE_TAB));
+    setIsKanbanView((isMobileViewport ? defaultViewModes.mobile : defaultViewModes.browser) === "kanban");
   }
 
   function addCatalogTag(tag) {
@@ -4470,7 +4471,6 @@ export default function App() {
   function showCapture() {
     requestEditExit(() => {
       setActionMessage("");
-      setCaptureMessage("");
       setActiveAppTab("capture");
       clearEdit();
       setIsActionMenuOpen(false);
@@ -4806,7 +4806,6 @@ export default function App() {
             nextTasks
           );
           setActionMessage(`Import abgeschlossen: ${nextTasks.length} Tasks importiert.`);
-          setCaptureMessage("");
         } else {
           setActionMessage("Import failed: the file contains no tasks.");
           window.alert("The file contains no tasks.");
@@ -5527,24 +5526,7 @@ export default function App() {
         )}
 
         {activeAppTab === "capture" && (
-          <form
-            className="taskForm"
-            onSubmit={addTask}
-            onPointerDownCapture={() => {
-              if (!captureMessage) return;
-              setCaptureMessage("");
-            }}
-            onFocusCapture={() => {
-              if (!captureMessage) return;
-              setCaptureMessage("");
-            }}
-          >
-            {captureMessage && (
-              <p className="successMessage">
-                Task {captureMessage} created
-              </p>
-            )}
-
+          <form className="taskForm" onSubmit={addTask}>
             <label className="captureTaskField" title={getTooltip("task", draft.task)}>
               <span>Task <strong>required</strong></span>
               <textarea
