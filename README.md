@@ -280,7 +280,7 @@ using (
 
 For stronger auth gating, `docs/supabase-schema.sql` also creates `public.hook_before_user_created` and `public.hook_custom_access_token`. After running the SQL, enable both Postgres functions in Supabase under `Authentication` -> `Hooks`. Detailed steps are in `docs/auth-hook-setup.md`.
 
-The app also keeps a local browser backup of the current task list and preserves local subtasks when remote data has none, so schema gaps do not silently replace existing local subtask content. On login, local-only tasks (created while Supabase was unreachable/misconfigured) are merged into the synced list rather than dropped, and the first settings sync per user/browser uploads local settings (dark mode, tab layout, tags, ...) instead of letting an empty/default remote row overwrite them.
+The app also keeps a local browser backup of the current task list and preserves local subtasks when remote data has none, so schema gaps do not silently replace existing local subtask content. On login, local-only tasks (created while Supabase was unreachable/misconfigured) are merged into the synced list rather than dropped. Synced settings (dark mode, tab layout, tags, ...) only pull down from Supabase when the remote value actually differs from its own default; a still-default remote value defers to whatever is set locally instead of silently overwriting it, so this behaves correctly both when recovering from a broken sync and when opening the app on a new device that should pick up already-synced settings.
 
 A task cannot be marked as done while it still has open predecessors or open subtasks. This applies both to the completion icon and to the desktop status dropdown. Complete predecessor tasks and subtasks first, then mark the task as done.
 

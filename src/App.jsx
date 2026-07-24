@@ -59,7 +59,6 @@ const DEFAULT_START_TAB_STORAGE_KEY = "task-001.default-start-tab.v1";
 const DEFAULT_MOBILE_START_TAB_STORAGE_KEY = "task-001.default-mobile-start-tab.v1";
 const KANBAN_COLUMNS_STORAGE_KEY = "task-001.kanban-columns.v1";
 const SESSION_VIEW_STORAGE_KEY = "task-001.session-view.v1";
-const SETTINGS_SYNCED_STORAGE_KEY_PREFIX = "task-001.settings-synced.v1:";
 
 const TASK_ID_PREFIX = "T";
 const MAX_TASK_TAGS = 1;
@@ -434,6 +433,18 @@ function normalizeViewMode(value) {
 
 function normalizeDefaultStartTab(value) {
   return START_TAB_OPTIONS.includes(value) ? value : DEFAULT_START_TAB;
+}
+
+function valuesEqual(a, b) {
+  return JSON.stringify(a) === JSON.stringify(b);
+}
+
+// A synced setting should only override a local value when it carries real information.
+// A remote value that still matches its own schema default could just mean "never actually
+// synced yet" (e.g. Supabase was unreachable when this device/account last saved), in which
+// case overwriting local customization with it would silently discard real local preferences.
+function preferLocalWhenRemoteIsDefault(remoteValue, defaultValue, localValue) {
+  return valuesEqual(remoteValue, defaultValue) ? localValue : remoteValue;
 }
 
 function normalizeKanbanColumns(value) {
@@ -3433,65 +3444,71 @@ export default function App() {
       return;
     }
 
-    // The first time this browser syncs settings for this user, local settings (dark mode, tab layout, tags, ...)
-    // may reflect real usage that never made it to Supabase yet (e.g. Supabase was unreachable/misconfigured).
-    // Skip pulling remote settings down this one time so local values survive and get uploaded by the normal
-    // save effect instead of being silently overwritten by a still-empty/default remote row.
-    const settingsSyncedKey = `${SETTINGS_SYNCED_STORAGE_KEY_PREFIX}${session.user.id}`;
-    if (localStorage.getItem(settingsSyncedKey) !== "true") {
-      localStorage.setItem(settingsSyncedKey, "true");
-      setIsSettingsLoaded(true);
-      return;
-    }
-
     let isCancelled = false;
 
     loadRemoteUserSettings(session.user.id)
       .then(remoteSettings => {
         if (isCancelled) return;
         if (remoteSettings) {
-          setSelectedTagTabs(remoteSettings.selectedTagTabs);
-          setTagCatalog(remoteSettings.tagCatalog);
+          // A remote value that still matches its own schema default may just mean "never actually
+          // synced yet" for this account (e.g. Supabase was unreachable/misconfigured before), so it
+          // must not silently overwrite real local customization - see preferLocalWhenRemoteIsDefault.
+          setSelectedTagTabs(current => preferLocalWhenRemoteIsDefault(remoteSettings.selectedTagTabs, [], current));
+          setTagCatalog(current => preferLocalWhenRemoteIsDefault(remoteSettings.tagCatalog, [], current));
           if (remoteSettings.browserCompactView !== null) {
-            setIsBrowserCompactView(Boolean(remoteSettings.browserCompactView));
+            setIsBrowserCompactView(current =>
+              preferLocalWhenRemoteIsDefault(Boolean(remoteSettings.browserCompactView), true, current));
           }
           if (remoteSettings.tooltipsEnabled !== null) {
-            setAreTooltipsEnabled(Boolean(remoteSettings.tooltipsEnabled));
+            setAreTooltipsEnabled(current =>
+              preferLocalWhenRemoteIsDefault(Boolean(remoteSettings.tooltipsEnabled), true, current));
           }
           if (remoteSettings.darkModeSettings !== null) {
-            setDarkModeSettings(remoteSettings.darkModeSettings);
+            setDarkModeSettings(current =>
+              preferLocalWhenRemoteIsDefault(remoteSettings.darkModeSettings, { browser: false, mobile: false }, current));
           }
           if (remoteSettings.editSectionDefaults !== null) {
-            setEditSectionDefaults(remoteSettings.editSectionDefaults);
+            setEditSectionDefaults(current =>
+              preferLocalWhenRemoteIsDefault(remoteSettings.editSectionDefaults, DEFAULT_EDIT_SECTION_DEFAULTS, current));
           }
           if (remoteSettings.cardBadgeColumns !== null) {
-            setCardBadgeColumns(remoteSettings.cardBadgeColumns);
+            setCardBadgeColumns(current =>
+              preferLocalWhenRemoteIsDefault(remoteSettings.cardBadgeColumns, DEFAULT_CARD_BADGE_COLUMNS, current));
           }
           if (remoteSettings.defaultViewModes !== null) {
-            setDefaultViewModes(current => ({
+            const remoteViewModesAreDefault =
+              valuesEqual(remoteSettings.defaultViewModes, { browser: DEFAULT_VIEW_MODE, mobile: DEFAULT_VIEW_MODE });
+            setDefaultViewModes(current => remoteViewModesAreDefault ? current : ({
               browser: hadDefaultViewModePreferenceOnStartRef.current || remoteSettings.defaultViewModes.browser !== "list" ? remoteSettings.defaultViewModes.browser : current.browser,
               mobile: remoteSettings.defaultViewModes.mobile
             }));
           }
           if (remoteSettings.defaultStartTabs !== null) {
-            setDefaultStartTabs(remoteSettings.defaultStartTabs);
-            const nextStartTab = isMobileViewportNow() ? remoteSettings.defaultStartTabs.mobile : remoteSettings.defaultStartTabs.browser;
-            if (!hasAppliedRemoteStartTabRef.current && !hasSessionViewSnapshotOnStartRef.current && activeAppTab === initialAppTab && !editingId) {
-              setActiveAppTab(nextStartTab);
-              setActiveTagScope("all");
-              setColumnFilters(getDefaultColumnFilters(nextStartTab));
+            const remoteStartTabsAreDefault =
+              valuesEqual(remoteSettings.defaultStartTabs, { browser: DEFAULT_START_TAB, mobile: DEFAULT_START_TAB });
+            if (!remoteStartTabsAreDefault) {
+              setDefaultStartTabs(remoteSettings.defaultStartTabs);
+              const nextStartTab = isMobileViewportNow() ? remoteSettings.defaultStartTabs.mobile : remoteSettings.defaultStartTabs.browser;
+              if (!hasAppliedRemoteStartTabRef.current && !hasSessionViewSnapshotOnStartRef.current && activeAppTab === initialAppTab && !editingId) {
+                setActiveAppTab(nextStartTab);
+                setActiveTagScope("all");
+                setColumnFilters(getDefaultColumnFilters(nextStartTab));
+              }
             }
           }
           hasAppliedRemoteStartTabRef.current = true;
           if (remoteSettings.kanbanColumnKeys !== null) {
-            setKanbanColumnKeys(migrateKanbanColumnKeys(remoteSettings.kanbanColumnKeys));
+            setKanbanColumnKeys(current =>
+              migrateKanbanColumnKeys(preferLocalWhenRemoteIsDefault(remoteSettings.kanbanColumnKeys, DEFAULT_KANBAN_COLUMN_KEYS, current)));
           }
           if (remoteSettings.upcomingBadgeDefaults !== null) {
-            setUpcomingBadgeDefaults(remoteSettings.upcomingBadgeDefaults);
+            setUpcomingBadgeDefaults(current =>
+              preferLocalWhenRemoteIsDefault(remoteSettings.upcomingBadgeDefaults, DEFAULT_UPCOMING_BADGE_DEFAULTS, current));
           }
 
           if (remoteSettings.tabLayout !== null) {
-            setTabLayout(remoteSettings.tabLayout);
+            setTabLayout(current =>
+              preferLocalWhenRemoteIsDefault(remoteSettings.tabLayout, getDefaultTabLayout(remoteSettings.selectedTagTabs), current));
           }
         }
         setIsSettingsLoaded(true);
