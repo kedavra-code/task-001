@@ -102,6 +102,7 @@ const KANBAN_COLUMNS = [
 ];
 const DEFAULT_KANBAN_COLUMN_KEYS = KANBAN_COLUMNS.map(column => column.key);
 const LEGACY_KANBAN_COLUMN_KEYS = ["open", "started"];
+const KANBAN_COLUMN_STATUS = { open: "Offen", started: "Gestartet", done: "Erledigt" };
 const MAX_CARD_BADGE_COLUMNS = 8;
 const DESCRIPTION_PREVIEW_LIMIT = 128;
 const TEXT_LIMITS = {
@@ -3075,10 +3076,12 @@ export default function App() {
   const [tagCatalog, setTagCatalog] = useState(loadTagCatalog);
   const [tabLayout, setTabLayout] = useState(loadTabLayout);
   const kanbanDragRef = useRef({ active: false, pointerId: null, startX: 0, scrollLeft: 0, didDrag: false });
+  const kanbanCardDragIdRef = useRef("");
   const [isSettingsLoaded, setIsSettingsLoaded] = useState(!isSupabaseConfigured);
   const [showBackToTop, setShowBackToTop] = useState(false);
   const [kanbanScrollHint, setKanbanScrollHint] = useState({ left: false, right: false });
   const [isKanbanHorizontallyScrollable, setIsKanbanHorizontallyScrollable] = useState(false);
+  const [dragOverKanbanColumn, setDragOverKanbanColumn] = useState("");
   const kanbanBoardRef = useRef(null);
   const kanbanTopScrollbarRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -3745,7 +3748,7 @@ export default function App() {
 
   function handleKanbanPointerDown(event) {
     if (event.button !== undefined && event.button !== 0) return;
-    if (event.target.closest?.("button, a, input, select, textarea, [role='button']")) return;
+    if (event.target.closest?.("button, a, input, select, textarea, [role='button'], [draggable='true']")) return;
     const board = kanbanBoardRef.current;
     if (!board || board.scrollWidth <= board.clientWidth) return;
     kanbanDragRef.current = {
@@ -3786,6 +3789,50 @@ export default function App() {
     if (!kanbanDragRef.current.didDrag) return;
     event.preventDefault();
     event.stopPropagation();
+  }
+
+  function moveTaskToKanbanColumn(taskId, columnKey) {
+    const targetTask = tasks.find(task => task.id === taskId);
+    if (!targetTask) return;
+    if (getKanbanColumnKey(targetTask) === columnKey) return;
+    const nextStatus = KANBAN_COLUMN_STATUS[columnKey];
+    if (!nextStatus) return;
+    updateTaskField(taskId, "googleStatus", nextStatus, { preserveView: true });
+  }
+
+  function handleKanbanCardDragStart(event, task) {
+    event.stopPropagation();
+    kanbanCardDragIdRef.current = task.id;
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", task.id);
+    event.currentTarget.classList.add("isDragging");
+  }
+
+  function handleKanbanCardDragEnd(event) {
+    event.currentTarget.classList.remove("isDragging");
+    kanbanCardDragIdRef.current = "";
+    setDragOverKanbanColumn("");
+  }
+
+  function handleKanbanColumnDragOver(event, columnKey) {
+    if (!kanbanCardDragIdRef.current) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+    setDragOverKanbanColumn(current => current === columnKey ? current : columnKey);
+  }
+
+  function handleKanbanColumnDragLeave(event, columnKey) {
+    if (event.currentTarget.contains(event.relatedTarget)) return;
+    setDragOverKanbanColumn(current => current === columnKey ? "" : current);
+  }
+
+  function handleKanbanColumnDrop(event, columnKey) {
+    const taskId = kanbanCardDragIdRef.current || event.dataTransfer.getData("text/plain");
+    event.preventDefault();
+    setDragOverKanbanColumn("");
+    kanbanCardDragIdRef.current = "";
+    if (!taskId) return;
+    moveTaskToKanbanColumn(taskId, columnKey);
   }
 
   function handleKanbanBoardScroll() {
@@ -4718,7 +4765,7 @@ export default function App() {
     }
   }
 
-  function updateTaskField(id, field, value) {
+  function updateTaskField(id, field, value, { preserveView = false } = {}) {
     const targetTask = tasks.find(task => task.id === id);
     if (!targetTask) return;
     if (isDeleted(targetTask) && field !== "googleStatus") return;
@@ -4761,7 +4808,7 @@ export default function App() {
       return;
     }
 
-    if (!isCompletingTask && (field === "googleStatus" || field === "tags") && !isTaskInActiveViewScope(nextTask)) {
+    if (!preserveView && !isCompletingTask && (field === "googleStatus" || field === "tags") && !isTaskInActiveViewScope(nextTask)) {
       showTaskView(nextTask);
     }
   }
@@ -6020,7 +6067,13 @@ export default function App() {
                 style={{ "--kanban-column-count": kanbanColumnGroups.length, "--kanban-badge-columns": kanbanBadgeColumnCount, "--kanban-badge-grid-width": `${kanbanBadgeGridWidth}px`, "--kanban-column-width": `${kanbanColumnWidth}px` }}
               >
                 {kanbanColumnGroups.map(column => (
-                  <article key={column.key} className="kanbanColumn">
+                  <article
+                    key={column.key}
+                    className={`kanbanColumn ${dragOverKanbanColumn === column.key ? "isDropTarget" : ""}`.trim()}
+                    onDragOver={event => handleKanbanColumnDragOver(event, column.key)}
+                    onDragLeave={event => handleKanbanColumnDragLeave(event, column.key)}
+                    onDrop={event => handleKanbanColumnDrop(event, column.key)}
+                  >
                     <header className="kanbanColumnHeader">
                       <h2>{column.title}</h2>
                       <span>{column.tasks.length}</span>
@@ -6032,7 +6085,12 @@ export default function App() {
                           {...getMobileTaskCardProps(task, {
                             isMobileViewport: isKanbanMobileViewport,
                             cardBadgeColumns: isKanbanMobileViewport ? DEFAULT_CARD_BADGE_COLUMNS : kanbanCardBadgeColumns,
-                            onStartEdit: startKanbanEdit
+                            onStartEdit: startKanbanEdit,
+                            dragProps: isKanbanMobileViewport ? {} : {
+                              draggable: true,
+                              onDragStart: event => handleKanbanCardDragStart(event, task),
+                              onDragEnd: handleKanbanCardDragEnd
+                            }
                           })}
                         />
                       ))}
@@ -6146,6 +6204,7 @@ export default function App() {
                   <li>Browser and phone can have separate default view modes and separate edit-section defaults. Edit sections default to expanded on both devices and are stored in user settings when the Supabase columns exist, with local storage as fallback.</li>
                   <li>Task details can be switched with the header icon for the current view. Options set only the default for fresh sessions: Minimum hides parameter badges and card content, including the Additional details label. Maximum shows parameter badges; cards with a description, subtasks, or comments then show a collapsible Additional details label below the badges, and opening it reveals the labeled content panels.</li>
                   <li>Kanban groups tasks into the enabled columns Backlog, Doing, and Done; the Done column is the only place in the All tab and tag scopes where done tasks show up outside the dedicated Done tab/menu view.</li>
+                  <li>On browser, dragging a card to another Kanban column changes its status (Backlog, Doing, or Done) directly, including the usual start-date auto-fill and completion checks; the current view stays put instead of jumping to that status.</li>
                   <li>On phones, Kanban scrolls horizontally by column, shows edge hints when more columns are available, and snaps to the next column while scrolling.</li>
                 </ul>
               </section>
@@ -7950,7 +8009,8 @@ function MobileTaskCard({
     getCardBadgeColumnClass("badgeEditColumns-", effectiveEditBadgeColumnValue),
     done ? "doneRow" : "",
     deleted ? "deletedRow" : "",
-    highlightedTaskId === task.id ? "highlightRow" : ""
+    highlightedTaskId === task.id ? "highlightRow" : "",
+    dragProps.draggable ? "isDraggableCard" : ""
   ]
     .filter(Boolean)
     .join(" ");

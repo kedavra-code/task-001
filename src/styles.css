@@ -4923,6 +4923,11 @@ tr[data-edit-surface="true"] .taskCell {
   text-align: center;
 }
 
+.kanbanColumn.isDropTarget {
+  border-color: #3b82f6;
+  background: #eaf2ff;
+}
+
 .kanbanColumn .mobileTaskCard {
   display: grid;
   gap: 6px;
@@ -4934,6 +4939,15 @@ tr[data-edit-surface="true"] .taskCell {
   background: #ffffff;
   padding: 8px;
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+}
+
+.kanbanColumn .mobileTaskCard.isDraggableCard {
+  cursor: grab;
+}
+
+.kanbanColumn .mobileTaskCard.isDraggableCard.isDragging {
+  opacity: 0.5;
+  cursor: grabbing;
 }
 
 .kanbanColumn .mobileTaskHeader {
@@ -5063,6 +5077,11 @@ tr[data-edit-surface="true"] .taskCell {
 [data-theme="dark"] .kanbanColumn {
   border-color: #303d4a;
   background: #161d24;
+}
+
+[data-theme="dark"] .kanbanColumn.isDropTarget {
+  border-color: #3b82f6;
+  background: #1b2a3d;
 }
 
 [data-theme="dark"] .kanbanColumnHeader span {
