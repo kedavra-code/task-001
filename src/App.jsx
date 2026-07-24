@@ -1468,6 +1468,7 @@ async function loadRemoteTasks(userId) {
 
 async function saveRemoteTasks(tasks, userId) {
   const activeTasks = pruneExpiredDeletedTasks(tasks);
+  const expiredIds = tasks.filter(isDeletedExpired).map(task => task.id);
   const rows = activeTasks.map(task => taskToRow(task, userId));
   const rowsWithoutMultiDepends = rows.map(({ depends_on_task_ids: _dependsOnTaskIds, ...row }) => row);
   const rowsWithoutSubtasks = rows.map(({ subtasks: _subtasks, ...row }) => row);
@@ -1483,19 +1484,8 @@ async function saveRemoteTasks(tasks, userId) {
   const hasTagData = rows.some(row => normalizeTags(row.tags).length > 0);
   const hasDeletedAtData = rows.some(row => row.deleted_at);
   const hasCommentData = rows.some(row => normalizeComments(row.comments).length > 0);
-  const { data: existingRows, error: selectError } = await supabase
-    .from("tasks")
-    .select("id")
-    .eq("user_id", userId);
-  if (selectError) throw selectError;
-
-  const nextIds = new Set(activeTasks.map(task => task.id));
-  const idsToDelete = (existingRows || [])
-    .map(row => row.id)
-    .filter(id => !nextIds.has(id));
-
-  if (idsToDelete.length > 0) {
-    const { error: deleteError } = await supabase.from("tasks").delete().in("id", idsToDelete);
+  if (expiredIds.length > 0) {
+    const { error: deleteError } = await supabase.from("tasks").delete().eq("user_id", userId).in("id", expiredIds);
     if (deleteError) throw deleteError;
   }
 
