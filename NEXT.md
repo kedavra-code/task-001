@@ -31,7 +31,7 @@
 When the user says they want to continue working on `task-001`, Codex should:
 
 1. Read `docs/codex-notes.md` first. Treat it as the current project memory across PCs and Codex sessions.
-2. Run `git status --short` and `git pull --rebase --autostash` before inspecting, changing, or judging existing behavior. GitHub `main` is the source of truth; do not rely on local memory or handoff text alone when deciding whether something is already implemented.
+2. Run `git status --short` and `git pull --rebase --autostash` first, unconditionally, before doing anything else. GitHub `main` is the source of truth; this project is worked on from more than one computer, so do not rely on local memory or handoff text alone when deciding whether something is already implemented.
 3. Make the requested app changes.
 4. Run `npm run lint` and `npm run build`.
 5. Before every push, update GitHub-facing documentation (`README.md` when user-facing behavior changes), the in-app user documentation under the `...` options menu, `CLAUDE.md` when handoff instructions change, and `docs/codex-notes.md` when behavior, project rules, or backlog changed.

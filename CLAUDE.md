@@ -12,7 +12,7 @@ Stack: React 19, TypeScript 6, Vite 8, Supabase (auth + storage), Google OAuth, 
 
 ## Working Rules
 
-- GitHub `main` is the source of truth. At the start of a session that inspects, changes, or judges existing behavior, run `git status --short` and `git pull --rebase --autostash` first; do not rely on memory of an older local checkout.
+- GitHub `main` is the source of truth. Run `git status --short` and `git pull --rebase --autostash` before doing anything else in every session, unconditionally — not just when a change looks relevant. This project is worked on from more than one computer, so the local checkout may be behind regardless of how the task looks; do not rely on memory of an older local checkout.
 - Before every push: run `npm test`, `npm run lint`, and `npm run build`.
 - Do not start or check the local dev server (`npm run dev`) as part of normal verification — only if the user explicitly asks for it.
 - Before pushing, update `README.md` when user-facing behavior changed, the in-app `...` -> `Docs` panel, and this file (`CLAUDE.md`) when working rules or current behavior changed. Keep them in sync with the app in the same commit — this file drifting from actual behavior makes it actively misleading.

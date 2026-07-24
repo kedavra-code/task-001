@@ -4,7 +4,7 @@ This file is the project memory for Codex sessions. Read it first after opening 
 
 ## Working Rules
 
-- GitHub `main` is the source of truth. At the start of every task-001 turn that inspects, changes, or judges existing behavior, first run `git status --short` and `git pull --rebase --autostash` before deciding whether something is already implemented or missing. Do not rely on local memory or handoff text alone.
+- GitHub `main` is the source of truth. At the start of every task-001 session, unconditionally run `git status --short` and `git pull --rebase --autostash` first, before doing anything else. This project is worked on from more than one computer, so do not rely on local memory or handoff text alone.
 - Apply the same implementation and release discipline on every computer: preserve existing safety confirmations, popup-close behavior, cache-buster reporting, documentation updates, verification commands, and push flow unless the user explicitly changes the rule.
 - Push completed changes directly unless the user explicitly says not to.
 - Do not start or check the local dev server for this project unless the user explicitly asks for it.
