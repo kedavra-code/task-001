@@ -4504,7 +4504,11 @@ export default function App() {
       const nextTab = isActiveListTab ? ACTIVE_TAB : tab;
       const nextDueStatus = isActiveListTab || tab === NEWEST_TAB || tab === REVIEW_TAB ? "Alle" : columnFilters.dueStatus;
       if (tab === REVIEW_TAB) setActiveTagScope("all");
-      if (nextTab === DONE_TAB || nextTab === DELETED_TAB) setIsKanbanView(false);
+      if (nextTab === DONE_TAB || nextTab === DELETED_TAB) {
+        setIsKanbanView(false);
+      } else if (nextTab === ACTIVE_TAB && (activeAppTab === DONE_TAB || activeAppTab === DELETED_TAB)) {
+        setIsKanbanView((isMobileViewport ? defaultViewModes.mobile : defaultViewModes.browser) === "kanban");
+      }
       setActiveAppTab(nextTab);
       clearEdit();
       setColumnFilters({ ...getDefaultColumnFilters(nextTab), dueStatus: nextDueStatus });
@@ -4576,6 +4580,9 @@ export default function App() {
     requestEditExit(() => {
       setActionMessage("");
       setActiveTagScope("all");
+      if (activeAppTab === DONE_TAB || activeAppTab === DELETED_TAB) {
+        setIsKanbanView((isMobileViewport ? defaultViewModes.mobile : defaultViewModes.browser) === "kanban");
+      }
       setActiveAppTab(ACTIVE_TAB);
       clearEdit();
       setColumnFilters(getDefaultColumnFilters(ACTIVE_TAB));
