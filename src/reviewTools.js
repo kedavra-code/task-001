@@ -76,13 +76,13 @@ export function getTaskReviewReasons(task, options = {}) {
   const commentTime = getLatestCommentTime(task);
 
   if (task.googleStatus === "Offen" && activityTime && daysBetween(activityTime, todayTime) >= staleDays) {
-    reasons.push(`Open for ${staleDays}+ days without activity`);
+    reasons.push(`Backlog for ${staleDays}+ days without activity`);
   }
 
   if (isStarted(task)) {
     const referenceTime = commentTime || activityTime;
     if (referenceTime && daysBetween(referenceTime, todayTime) >= staleDays) {
-      reasons.push(`Started without a comment for ${staleDays}+ days`);
+      reasons.push(`Doing without a comment for ${staleDays}+ days`);
     }
   }
 

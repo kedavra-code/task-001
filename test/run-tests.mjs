@@ -273,7 +273,7 @@ test("started tasks without recent comments enter review", () => {
     faellig: "2026-06-20"
   });
 
-  assert.match(getTaskReviewReasons(started, { today: "2026-06-03" }).join(" "), /Started without a comment/);
+  assert.match(getTaskReviewReasons(started, { today: "2026-06-03" }).join(" "), /Doing without a comment/);
 });
 
 test("review summary counts daily and weekly closure metrics", () => {
