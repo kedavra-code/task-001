@@ -10,10 +10,6 @@ task-001 focuses on fast operational task triage: capture incoming work, decide 
 The repository contains the working task sheet app on top of a Vite React
 TypeScript scaffold.
 
-## Codex Project Memory
-
-Codex sessions should read `docs/codex-notes.md` first when continuing work, especially on another computer. That file records the current working rules, recent behavior decisions, verification flow, and future backlog. Keep it updated together with user-facing documentation whenever behavior or project rules change.
-
 ## Stack
 
 - React 19
